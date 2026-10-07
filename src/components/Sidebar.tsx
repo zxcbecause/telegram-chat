@@ -6,7 +6,7 @@ import { listLabel } from '../lib/date';
 import { maskPhoneInput } from '../lib/phone';
 import type { Chat } from '../state/chatReducer';
 import { Avatar } from './Avatar';
-import { AutoThemeIcon, LogoutIcon, MaxLogo, MoonIcon, PlusIcon, SunIcon } from './icons';
+import { AutoThemeIcon, LogoutIcon, AppLogo, MoonIcon, PlusIcon, SunIcon } from './icons';
 import { StatusMark } from './StatusMark';
 
 interface Props {
@@ -17,7 +17,7 @@ interface Props {
   onToggleTheme: () => void;
   onLogout: () => void;
   onSelect: (chatId: string) => void;
-  onCreate: (phone: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  onCreate: (recipient: string) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 const CONNECTION_TEXT: Record<ConnectionState, string> = {
@@ -34,7 +34,7 @@ export function Sidebar(props: Props) {
     <aside className="sidebar" aria-label="Чаты">
       <header className="sidebar__header">
         <div className="sidebar__brand">
-          <MaxLogo size={30} />
+          <AppLogo size={30} />
           <div>
             <div className="sidebar__title">Чаты</div>
             <div className={`conn conn--${connection}`} role="status" aria-live="polite">
@@ -80,7 +80,7 @@ export function Sidebar(props: Props) {
       {chats.length === 0 && (
         <div className="sidebar__empty">
           <p>Пока нет чатов</p>
-          <span>Введите номер получателя выше, чтобы начать переписку</span>
+          <span>Введите номер телефона или @username выше, чтобы начать переписку</span>
         </div>
       )}
     </aside>
@@ -150,10 +150,12 @@ function NewChatForm({ onCreate }: { onCreate: Props['onCreate'] }) {
       <div className={`new-chat__field ${error ? 'has-error' : ''}`}>
         <input
           className="new-chat__input"
-          type="tel"
-          inputMode="tel"
-          placeholder="Номер получателя: +7 …"
-          aria-label="Номер телефона получателя"
+          type="text"
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          placeholder="Номер или @username"
+          aria-label="Номер телефона или @username получателя"
           value={phone}
           onChange={(e) => {
             setPhone(maskPhoneInput(e.target.value));

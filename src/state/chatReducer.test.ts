@@ -111,7 +111,7 @@ describe('chatReducer', () => {
 });
 
 describe('chat titles', () => {
-  it('replaces the phone placeholder with the sender name from MAX', () => {
+  it('replaces the phone placeholder with the sender name from Telegram', () => {
     const s = run([
       { type: 'chat/open', chatId: 'c1', title: '+7 700 123-45-67', phone: '77001234567', now: 1 },
       {

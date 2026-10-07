@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { guessApiUrl } from '../api/greenApi';
 import type { Credentials } from '../api/types';
 import type { LoginResult } from '../hooks/useSession';
-import { ChevronIcon, EyeIcon, MaxLogo } from './icons';
+import { ChevronIcon, EyeIcon, AppLogo } from './icons';
 
 interface Props {
   onLogin: (credentials: Credentials, remember: boolean) => Promise<LoginResult>;
@@ -53,8 +53,8 @@ export function LoginScreen({ onLogin }: Props) {
         noValidate
       >
         <div className="login__brand">
-          <MaxLogo size={56} />
-          <h1>Вход в MAX</h1>
+          <AppLogo size={56} />
+          <h1>Вход в Telegram</h1>
           <p>Введите данные инстанса из личного кабинета GREEN-API</p>
         </div>
 
@@ -64,7 +64,7 @@ export function LoginScreen({ onLogin }: Props) {
             className="field__input"
             inputMode="numeric"
             autoComplete="username"
-            placeholder="3100123456"
+            placeholder="4100123456"
             value={idInstance}
             onChange={(e) => setIdInstance(e.target.value.replace(/\D/g, ''))}
             autoFocus

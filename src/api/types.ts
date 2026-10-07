@@ -1,6 +1,6 @@
 /**
- * Types for the subset of the GREEN-API (MAX, v3) HTTP API used by this app.
- * Docs: https://green-api.com/v3/docs/api/
+ * Types for the subset of the GREEN-API (Telegram) HTTP API used by this app.
+ * Docs: https://green-api.com/telegram/docs/api/
  */
 
 export interface Credentials {
@@ -34,6 +34,8 @@ export interface SendMessageResponse {
 export interface CheckAccountResponse {
   exist: boolean;
   chatId: string;
+  username?: string;
+  phoneNumber?: number;
   fromCache?: boolean;
 }
 

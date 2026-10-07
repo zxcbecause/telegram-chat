@@ -59,9 +59,9 @@ export function toMessageStatus(s: OutgoingStatus | string | undefined): Message
 }
 
 export function describeStatusError(s: OutgoingStatus, description?: string): string | undefined {
-  if (s === 'noAccount') return 'У получателя нет аккаунта MAX';
+  if (s === 'noAccount') return 'У получателя нет Telegram или номер скрыт настройками приватности';
   if (s === 'notInGroup') return 'Вы не участник этого чата';
-  if (s === 'failed') return description || 'MAX не принял сообщение';
+  if (s === 'failed') return description || 'Telegram не принял сообщение';
   return undefined;
 }
 

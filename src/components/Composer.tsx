@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from 'react';
 import type { Message } from '../state/chatReducer';
 import { CloseIcon, ReplyIcon, SendIcon } from './icons';
 
-const MAX_LENGTH = 4000; // SendMessage limit
+const MAX_LENGTH = 4096; // SendMessage limit for Telegram
 
 interface Props {
   chatId: string;

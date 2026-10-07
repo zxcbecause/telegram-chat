@@ -82,15 +82,15 @@ export class GreenApiClient {
     return this.request<SendMessageResponse>('POST', 'sendMessage', { body: payload, signal });
   }
 
-  async checkAccount(phoneNumber: string, signal?: AbortSignal) {
-    const res = await this.request<CheckAccountResponse & { status?: boolean; reason?: string }>(
-      'POST',
-      'checkAccount',
-      { body: { phoneNumber: Number(phoneNumber) }, signal },
-    );
+  /** Resolves a Telegram chatId by phone number (digits) or @username. */
+  async checkAccount(target: { phoneNumber: string } | { username: string }, signal?: AbortSignal) {
+    const body = 'phoneNumber' in target ? { phoneNumber: Number(target.phoneNumber) } : { username: target.username };
+    const res = await this.request<
+      CheckAccountResponse & { status?: boolean; reason?: string; data?: { reason?: string } }
+    >('POST', 'checkAccount', { body, signal });
     // The API reports some failures with 200 + { status: false, reason }.
     if (res && res.status === false) {
-      throw new GreenApiError(translateReason(res.reason), 200);
+      throw new GreenApiError(translateReason(res.reason ?? res.data?.reason), 200);
     }
     return res;
   }
@@ -127,9 +127,9 @@ async function safeText(res: Response): Promise<string> {
 function translateReason(reason?: string): string {
   if (!reason) return 'Не удалось выполнить запрос';
   if (reason.includes('not authorized') || reason.includes('starting')) {
-    return 'Инстанс не авторизован в MAX или ещё запускается';
+    return 'Инстанс не авторизован в Telegram или ещё запускается';
   }
-  if (reason.includes('limit')) return 'Слишком много проверок номеров. Попробуйте позже';
+  if (reason.includes('limit')) return 'Слишком много проверок номеров. Telegram просит подождать';
   return reason;
 }
 
@@ -148,6 +148,8 @@ function describeHttpError(status: number, body: string): string {
       return 'Слишком много запросов, подождите немного';
     case 466:
       return 'Достигнут лимит тарифа GREEN-API';
+    case 469:
+      return 'Telegram временно ограничил проверку номеров, попробуйте позже';
     default:
       return status >= 500 ? 'Сервер GREEN-API временно недоступен' : `Ошибка ${status}`;
   }

@@ -37,7 +37,10 @@ export function ChatView({ chat, api, instanceState, onBack }: Props) {
   const onDiscard = useCallback((id: string) => discardMessage(chat.chatId, id), [discardMessage, chat.chatId]);
   const onReload = useCallback(() => void loadHistory(chat.chatId), [loadHistory, chat.chatId]);
 
-  const subtitle = chat.phone && chat.title !== formatPhone(chat.phone) ? formatPhone(chat.phone) : 'MAX';
+  const subtitle =
+    [chat.username, chat.phone ? formatPhone(chat.phone) : undefined]
+      .filter((v): v is string => !!v && v !== chat.title)
+      .join(' · ') || 'Telegram';
 
   return (
     <section className="chat" aria-label={`Чат с ${chat.title}`}>
@@ -54,7 +57,7 @@ export function ChatView({ chat, api, instanceState, onBack }: Props) {
 
       {!authorized && (
         <div className="banner banner--warn" role="alert">
-          Инстанс не авторизован в MAX ({instanceState}). Отправка недоступна — авторизуйте его в личном кабинете
+          Инстанс не авторизован в Telegram ({instanceState}). Отправка недоступна — авторизуйте его в личном кабинете
           GREEN-API.
         </div>
       )}

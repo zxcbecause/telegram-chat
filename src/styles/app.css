@@ -1,43 +1,51 @@
 /* ==========================================================================
    Design tokens — light by default, dark via OS or [data-theme="dark"].
-   Palette follows MAX: neutral surfaces, blue→violet brand accent.
+   Palette follows Telegram Web: blue accent, green-tinted outgoing bubbles
+   and a soft gradient wallpaper; purple accent in the dark theme.
    ========================================================================== */
 :root {
-  --accent: #2d7bff;
-  --accent-2: #8a3ffc;
-  --accent-grad: linear-gradient(135deg, #2d7bff 0%, #6a5cff 60%, #8a3ffc 100%);
-  --accent-soft: rgba(45, 123, 255, 0.12);
+  --accent: #3390ec;
+  --accent-grad: linear-gradient(135deg, #3d9cf5 0%, #2a80dc 100%);
+  --accent-soft: rgba(51, 144, 236, 0.12);
+  --accent-shadow: rgba(51, 144, 236, 0.3);
 
-  --bg: #eef1f6;
+  --bg: #f4f4f5;
   --surface: #ffffff;
-  --surface-2: #f5f7fa;
-  --surface-hover: #f0f3f8;
-  --border: rgba(16, 24, 40, 0.08);
-  --text: #0f1115;
-  --text-2: #5b6270;
-  --text-3: #8b929e;
+  --surface-2: #f4f4f5;
+  --surface-hover: #f4f4f5;
+  --border: rgba(0, 0, 0, 0.08);
+  --text: #000000;
+  --text-2: #707579;
+  --text-3: #a2acb4;
 
   --bubble-in: #ffffff;
-  --bubble-in-text: #0f1115;
-  --bubble-out: #d8e7ff;
-  --bubble-out-text: #0b1b36;
-  --bubble-meta-out: #4d6a99;
-  --read: #2d7bff;
+  --bubble-in-text: #000000;
+  --bubble-out: #eeffde;
+  --bubble-out-text: #000000;
+  --bubble-meta-out: #4fae4e;
+  --read: #4fae4e;
 
-  --chat-bg: #e7ecf3;
-  --chat-pattern: rgba(45, 123, 255, 0.05);
+  --chat-wallpaper:
+    radial-gradient(55% 60% at 10% 15%, #d5d88d, transparent 70%),
+    radial-gradient(50% 55% at 90% 25%, #88b884, transparent 70%),
+    radial-gradient(60% 60% at 80% 90%, #6ba587, transparent 70%),
+    radial-gradient(60% 60% at 15% 85%, #dbddbb, transparent 70%),
+    #c4d4a4;
+  --chat-pattern: rgba(40, 70, 30, 0.07);
+  --pill-bg: rgba(74, 107, 58, 0.4);
+  --pill-text: #ffffff;
 
-  --danger: #e5484d;
+  --danger: #e53935;
   --warn-bg: #fff4d6;
   --warn-text: #7a5300;
-  --success: #2fb36b;
+  --success: #4fae4e;
 
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-md: 0 6px 24px rgba(16, 24, 40, 0.08);
-  --shadow-lg: 0 24px 60px rgba(16, 24, 40, 0.14);
+  --shadow-sm: 0 1px 2px rgba(16, 35, 47, 0.15);
+  --shadow-md: 0 4px 18px rgba(16, 35, 47, 0.12);
+  --shadow-lg: 0 24px 60px rgba(16, 35, 47, 0.16);
 
-  --radius: 18px;
-  --sidebar-w: 360px;
+  --radius: 15px;
+  --sidebar-w: 380px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
   color-scheme: light;
@@ -52,23 +60,33 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --accent-soft: rgba(77, 145, 255, 0.18);
-    --bg: #0e0f12;
-    --surface: #17181c;
-    --surface-2: #1f2025;
-    --surface-hover: #22242a;
-    --border: rgba(255, 255, 255, 0.07);
-    --text: #eceef2;
-    --text-2: #a2a8b3;
-    --text-3: #6f7681;
-    --bubble-in: #23252b;
-    --bubble-in-text: #eceef2;
-    --bubble-out: #2b5bd7;
+    --accent: #8774e1;
+    --accent-grad: linear-gradient(135deg, #8774e1 0%, #6c5bd1 100%);
+    --accent-soft: rgba(135, 116, 225, 0.18);
+    --accent-shadow: rgba(135, 116, 225, 0.3);
+    --bg: #0f0f0f;
+    --surface: #212121;
+    --surface-2: #2c2c2c;
+    --surface-hover: #2c2c2c;
+    --border: rgba(255, 255, 255, 0.06);
+    --text: #ffffff;
+    --text-2: #aaaaaa;
+    --text-3: #7d7d7d;
+    --bubble-in: #212121;
+    --bubble-in-text: #ffffff;
+    --bubble-out: #766ac8;
     --bubble-out-text: #ffffff;
-    --bubble-meta-out: rgba(255, 255, 255, 0.7);
-    --read: #9cc4ff;
-    --chat-bg: #0f1013;
-    --chat-pattern: rgba(120, 140, 255, 0.05);
+    --bubble-meta-out: rgba(255, 255, 255, 0.6);
+    --read: #ffffff;
+    --chat-wallpaper:
+      radial-gradient(60% 60% at 15% 20%, rgba(118, 106, 200, 0.22), transparent 70%),
+      radial-gradient(50% 50% at 85% 80%, rgba(56, 120, 110, 0.25), transparent 70%),
+      linear-gradient(160deg, #1a1d1f, #141617);
+    --chat-pattern: rgba(255, 255, 255, 0.035);
+  --pill-bg: rgba(0, 0, 0, 0.45);
+  --pill-text: #ffffff;
+    --pill-bg: rgba(0, 0, 0, 0.45);
+    --pill-text: #ffffff;
     --warn-bg: #3a2e10;
     --warn-text: #ffd57a;
     --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.35);
@@ -78,23 +96,29 @@
 }
 
 :root[data-theme='dark'] {
-  --accent-soft: rgba(77, 145, 255, 0.18);
-  --bg: #0e0f12;
-  --surface: #17181c;
-  --surface-2: #1f2025;
-  --surface-hover: #22242a;
-  --border: rgba(255, 255, 255, 0.07);
-  --text: #eceef2;
-  --text-2: #a2a8b3;
-  --text-3: #6f7681;
-  --bubble-in: #23252b;
-  --bubble-in-text: #eceef2;
-  --bubble-out: #2b5bd7;
+  --accent: #8774e1;
+  --accent-grad: linear-gradient(135deg, #8774e1 0%, #6c5bd1 100%);
+  --accent-soft: rgba(135, 116, 225, 0.18);
+  --accent-shadow: rgba(135, 116, 225, 0.3);
+  --bg: #0f0f0f;
+  --surface: #212121;
+  --surface-2: #2c2c2c;
+  --surface-hover: #2c2c2c;
+  --border: rgba(255, 255, 255, 0.06);
+  --text: #ffffff;
+  --text-2: #aaaaaa;
+  --text-3: #7d7d7d;
+  --bubble-in: #212121;
+  --bubble-in-text: #ffffff;
+  --bubble-out: #766ac8;
   --bubble-out-text: #ffffff;
-  --bubble-meta-out: rgba(255, 255, 255, 0.7);
-  --read: #9cc4ff;
-  --chat-bg: #0f1013;
-  --chat-pattern: rgba(120, 140, 255, 0.05);
+  --bubble-meta-out: rgba(255, 255, 255, 0.6);
+  --read: #ffffff;
+  --chat-wallpaper:
+    radial-gradient(60% 60% at 15% 20%, rgba(118, 106, 200, 0.22), transparent 70%),
+    radial-gradient(50% 50% at 85% 80%, rgba(56, 120, 110, 0.25), transparent 70%),
+    linear-gradient(160deg, #1a1d1f, #141617);
+  --chat-pattern: rgba(255, 255, 255, 0.035);
   --warn-bg: #3a2e10;
   --warn-text: #ffd57a;
   --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.35);
@@ -204,12 +228,12 @@ a:hover {
 .btn--primary {
   color: #fff;
   background: var(--accent-grad);
-  box-shadow: 0 8px 20px rgba(45, 123, 255, 0.3);
+  box-shadow: 0 8px 20px var(--accent-shadow);
 }
 
 .btn--primary:hover:not(:disabled) {
   filter: brightness(1.06);
-  box-shadow: 0 10px 26px rgba(45, 123, 255, 0.38);
+  box-shadow: 0 10px 26px var(--accent-shadow);
 }
 
 .btn--primary:active:not(:disabled) {
@@ -288,8 +312,8 @@ a:hover {
   position: absolute;
   inset: -20%;
   background:
-    radial-gradient(40% 40% at 25% 30%, rgba(45, 123, 255, 0.22), transparent 70%),
-    radial-gradient(35% 35% at 75% 70%, rgba(138, 63, 252, 0.2), transparent 70%);
+    radial-gradient(40% 40% at 25% 30%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
+    radial-gradient(35% 35% at 75% 70%, rgba(79, 174, 78, 0.18), transparent 70%);
   filter: blur(20px);
   animation: drift 18s ease-in-out infinite alternate;
   pointer-events: none;
@@ -492,7 +516,7 @@ a:hover {
 .app__main {
   position: relative;
   min-width: 0;
-  background: var(--chat-bg);
+  background: var(--chat-wallpaper);
 }
 
 .app__pane {
@@ -512,9 +536,10 @@ a:hover {
 
 .placeholder p {
   margin: 0;
-  padding: 8px 14px;
+  padding: 6px 14px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  color: var(--pill-text);
+  background: var(--pill-bg);
   backdrop-filter: blur(6px);
   font-size: 14px;
 }
@@ -829,16 +854,10 @@ a:hover {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background-color: var(--chat-bg);
-  background-image:
-    radial-gradient(circle at 1px 1px, var(--chat-pattern) 1.2px, transparent 0),
-    radial-gradient(60% 50% at 100% 0%, color-mix(in srgb, var(--accent-2) 7%, transparent), transparent),
-    radial-gradient(50% 50% at 0% 100%, color-mix(in srgb, var(--accent) 7%, transparent), transparent);
-  background-size:
-    22px 22px,
-    100% 100%,
-    100% 100%;
-  background-attachment: local, scroll, scroll;
+  /* Dots scroll with the messages; the wallpaper itself lives on .app__main. */
+  background-image: radial-gradient(circle at 1px 1px, var(--chat-pattern) 1.2px, transparent 0);
+  background-size: 22px 22px;
+  background-attachment: local;
 }
 
 .messages__inner {
@@ -923,12 +942,11 @@ a:hover {
 .day-sep span {
   padding: 4px 12px;
   border-radius: 999px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--text-2);
-  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  color: var(--pill-text);
+  background: var(--pill-bg);
   backdrop-filter: blur(8px);
-  box-shadow: var(--shadow-sm);
 }
 
 /* Message */
@@ -995,7 +1013,7 @@ a:hover {
   opacity: 0.7;
 }
 
-/* Time floats bottom-right inside the bubble, like in MAX/Telegram. */
+/* Time floats bottom-right inside the bubble, like in Telegram. */
 .bubble__meta {
   float: right;
   display: inline-flex;
@@ -1027,8 +1045,8 @@ a:hover {
 }
 
 .msg--out .bubble__quote {
-  border-left-color: currentColor;
-  background: color-mix(in srgb, currentColor 10%, transparent);
+  border-left-color: var(--bubble-meta-out);
+  background: color-mix(in srgb, var(--bubble-meta-out) 14%, transparent);
 }
 
 .bubble__quote:hover {
@@ -1041,7 +1059,7 @@ a:hover {
 }
 
 .msg--out .bubble__quote-author {
-  color: inherit;
+  color: var(--bubble-meta-out);
 }
 
 .bubble__quote-text {
@@ -1302,7 +1320,7 @@ a:hover {
   border-radius: 50%;
   color: #fff;
   background: var(--accent-grad);
-  box-shadow: 0 6px 16px rgba(45, 123, 255, 0.35);
+  box-shadow: 0 6px 16px var(--accent-shadow);
 }
 
 .composer__counter {

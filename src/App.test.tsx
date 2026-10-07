@@ -6,7 +6,7 @@ import { fake, ID, TOKEN } from './test/server';
 beforeEach(() => fake.reset());
 
 async function login(user: ReturnType<typeof userEvent.setup>, token = TOKEN) {
-  await user.type(screen.getByPlaceholderText('3100123456'), ID);
+  await user.type(screen.getByPlaceholderText('4100123456'), ID);
   await user.type(screen.getByLabelText('apiTokenInstance'), token);
   await user.click(screen.getByRole('button', { name: 'Войти' }));
 }
@@ -25,7 +25,7 @@ describe('App (end-to-end against a fake GREEN-API)', () => {
     await login(user);
 
     // Create a chat by phone number.
-    const phone = await screen.findByLabelText('Номер телефона получателя');
+    const phone = await screen.findByLabelText('Номер телефона или @username получателя');
     await user.type(phone, '87001234567');
     await user.click(screen.getByRole('button', { name: 'Создать чат' }));
     const chat = await screen.findByRole('region', { name: /Чат с \+7 700 123-45-67/ });
@@ -35,7 +35,7 @@ describe('App (end-to-end against a fake GREEN-API)', () => {
     await waitFor(() => expect(fake.sent).toEqual([{ chatId: 'chat-77001234567', message: 'Привет!' }]));
     expect(within(chat).getByText('Привет!')).toBeInTheDocument();
 
-    // The recipient answers in MAX → it arrives through receiveNotification.
+    // The recipient answers in Telegram → it arrives through receiveNotification.
     fake.push({
       typeWebhook: 'incomingMessageReceived',
       timestamp: Math.floor(Date.now() / 1000),
@@ -59,12 +59,24 @@ describe('App (end-to-end against a fake GREEN-API)', () => {
     await waitFor(() => expect(fake.deleted).toEqual([1, 2]));
   });
 
-  it('tells the user when the number has no MAX account', async () => {
+  it('tells the user when the number has no Telegram account', async () => {
     const user = userEvent.setup();
     render(<App />);
     await login(user);
-    await user.type(await screen.findByLabelText('Номер телефона получателя'), '77000000000');
+    await user.type(await screen.findByLabelText('Номер телефона или @username получателя'), '77000000000');
     await user.click(screen.getByRole('button', { name: 'Создать чат' }));
-    expect(await screen.findByText('На этом номере нет аккаунта MAX')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Не нашли Telegram на этом номере (или номер скрыт настройками приватности)'),
+    ).toBeInTheDocument();
+  });
+
+  it('starts a chat by @username', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await login(user);
+    await user.type(await screen.findByLabelText('Номер телефона или @username получателя'), '@Anya_Dev');
+    await user.click(screen.getByRole('button', { name: 'Создать чат' }));
+    const chat = await screen.findByRole('region', { name: 'Чат с @anya_dev' });
+    expect(within(chat).getByText('+7 999 111-22-33')).toBeInTheDocument();
   });
 });

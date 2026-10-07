@@ -9,7 +9,7 @@ beforeEach(() => fake.reset());
 
 describe('guessApiUrl', () => {
   it('derives the cluster host from idInstance', () => {
-    expect(guessApiUrl('3100123456')).toBe('https://3100.api.green-api.com');
+    expect(guessApiUrl('4100123456')).toBe('https://4100.api.green-api.com');
     expect(guessApiUrl('')).toBe('https://api.green-api.com');
   });
 });
@@ -46,7 +46,12 @@ describe('GreenApiClient', () => {
         HttpResponse.json({ status: false, reason: 'instance is starting or not authorized' }),
       ),
     );
-    await expect(client.checkAccount('77001234567')).rejects.toBeInstanceOf(GreenApiError);
+    await expect(client.checkAccount({ phoneNumber: '77001234567' })).rejects.toBeInstanceOf(GreenApiError);
+  });
+
+  it('resolves a chat by @username', async () => {
+    const res = await client.checkAccount({ username: '@anya_dev' });
+    expect(res).toMatchObject({ exist: true, chatId: 'chat-anya' });
   });
 });
 

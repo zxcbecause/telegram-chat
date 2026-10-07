@@ -9,7 +9,7 @@ import {
   toMessageStatus,
 } from '../api/mappers';
 import type { InstanceState, MessageWebhook, StateWebhook, StatusWebhook, Webhook } from '../api/types';
-import { formatPhone, normalizePhone } from '../lib/phone';
+import { formatPhone, parseRecipient } from '../lib/phone';
 import { keys, load, remove, save } from '../lib/storage';
 import { chatReducer, initialState, selectChatList, type Chat, type ChatState } from '../state/chatReducer';
 import { useNotifications } from './useNotifications';
@@ -108,32 +108,50 @@ export function useChat(client: GreenApiClient, idInstance: string, persist: boo
     [client],
   );
 
-  /** Validates the number, resolves its MAX chatId via CheckAccount and opens the chat. */
-  const openChatByPhone = useCallback(
-    async (rawPhone: string): Promise<{ ok: true } | { ok: false; error: string }> => {
-      const phone = normalizePhone(rawPhone);
-      if (!phone.ok) return phone;
+  /**
+   * Resolves the recipient's Telegram chatId via CheckAccount (by phone or @username)
+   * and opens the chat. Known recipients are opened without another API call —
+   * GREEN-API recommends not re-checking the same numbers.
+   */
+  const openChat = useCallback(
+    async (rawRecipient: string): Promise<{ ok: true } | { ok: false; error: string }> => {
+      const recipient = parseRecipient(rawRecipient);
+      if (!recipient.ok) return recipient;
+      const isPhone = recipient.kind === 'phone';
 
-      const existing = Object.values(stateRef.current.chats).find((c) => c.phone === phone.digits);
+      const existing = Object.values(stateRef.current.chats).find((c) =>
+        isPhone ? c.phone === recipient.value : c.username?.toLowerCase() === recipient.value.toLowerCase(),
+      );
       if (existing) {
         dispatch({ type: 'chat/select', chatId: existing.chatId });
         return { ok: true };
       }
 
       try {
-        const res = await client.checkAccount(phone.digits);
+        const res = await client.checkAccount(
+          isPhone ? { phoneNumber: recipient.value } : { username: recipient.value },
+        );
         if (!res?.exist || !res.chatId) {
-          return { ok: false, error: 'На этом номере нет аккаунта MAX' };
+          return {
+            ok: false,
+            error: isPhone
+              ? 'Не нашли Telegram на этом номере (или номер скрыт настройками приватности)'
+              : 'Пользователь с таким @username не найден',
+          };
         }
+        const phone = isPhone ? recipient.value : res.phoneNumber ? String(res.phoneNumber) : undefined;
+        const username = res.username || (isPhone ? undefined : recipient.value);
         dispatch({
           type: 'chat/open',
           chatId: res.chatId,
-          title: stateRef.current.chats[res.chatId]?.title ?? formatPhone(phone.digits),
-          phone: phone.digits,
+          title:
+            stateRef.current.chats[res.chatId]?.title ?? (isPhone ? formatPhone(recipient.value) : username!),
+          phone,
+          username,
         });
         return { ok: true };
       } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : 'Не удалось проверить номер' };
+        return { ok: false, error: err instanceof Error ? err.message : 'Не удалось найти получателя' };
       }
     },
     [client],
@@ -187,12 +205,12 @@ export function useChat(client: GreenApiClient, idInstance: string, persist: boo
       removeChat: (chatId: string) => dispatch({ type: 'chat/remove', chatId }),
       setDraft: (chatId: string, draft: string) => dispatch({ type: 'chat/draft', chatId, draft }),
       discardMessage: (chatId: string, localId: string) => dispatch({ type: 'send/discard', chatId, localId }),
-      openChatByPhone,
+      openChat,
       sendMessage,
       retryMessage,
       loadHistory,
     }),
-    [openChatByPhone, sendMessage, retryMessage, loadHistory],
+    [openChat, sendMessage, retryMessage, loadHistory],
   );
 
   return {

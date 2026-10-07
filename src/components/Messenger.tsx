@@ -3,7 +3,7 @@ import type { GreenApiClient } from '../api/greenApi';
 import { useChat } from '../hooks/useChat';
 import type { ThemePref } from '../hooks/useTheme';
 import { ChatView } from './ChatView';
-import { MaxLogo } from './icons';
+import { AppLogo } from './icons';
 import { Sidebar } from './Sidebar';
 
 interface Props {
@@ -29,7 +29,7 @@ export function Messenger({ client, idInstance, persist, theme, onToggleTheme, o
         onToggleTheme={onToggleTheme}
         onLogout={onLogout}
         onSelect={api.selectChat}
-        onCreate={api.openChatByPhone}
+        onCreate={api.openChat}
       />
 
       <main className="app__main">
@@ -58,8 +58,8 @@ export function Messenger({ client, idInstance, persist, theme, onToggleTheme, o
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <MaxLogo size={72} />
-              <p>Выберите чат или создайте новый по номеру телефона</p>
+              <AppLogo size={72} />
+              <p>Выберите чат или начните новый по номеру или @username</p>
             </motion.div>
           )}
         </AnimatePresence>

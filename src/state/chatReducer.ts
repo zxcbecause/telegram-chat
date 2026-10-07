@@ -26,6 +26,7 @@ export interface Chat {
   chatId: string;
   title: string;
   phone?: string;
+  username?: string;
   messages: Message[];
   draft: string;
   unread: number;
@@ -43,7 +44,7 @@ export interface ChatState {
 export const initialState: ChatState = { chats: {}, activeChatId: null, orphanStatuses: {} };
 
 export type ChatAction =
-  | { type: 'chat/open'; chatId: string; title: string; phone?: string; now?: number }
+  | { type: 'chat/open'; chatId: string; title: string; phone?: string; username?: string; now?: number }
   | { type: 'chat/select'; chatId: string | null }
   | { type: 'chat/remove'; chatId: string }
   | { type: 'chat/draft'; chatId: string; draft: string }
@@ -70,8 +71,8 @@ export function mergeStatus(current: MessageStatus | undefined, next: MessageSta
   return RANK[next] >= RANK[current] ? next : current;
 }
 
-function newChat(chatId: string, title: string, phone: string | undefined, now: number): Chat {
-  return { chatId, title, phone, messages: [], draft: '', unread: 0, updatedAt: now, history: 'idle' };
+function newChat(chatId: string, title: string, now: number, phone?: string, username?: string): Chat {
+  return { chatId, title, phone, username, messages: [], draft: '', unread: 0, updatedAt: now, history: 'idle' };
 }
 
 /**
@@ -99,8 +100,13 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'chat/open': {
       const existing = state.chats[action.chatId];
       const chat = existing
-        ? { ...existing, phone: existing.phone ?? action.phone, unread: 0 }
-        : newChat(action.chatId, action.title, action.phone, action.now ?? Date.now());
+        ? {
+            ...existing,
+            phone: existing.phone ?? action.phone,
+            username: existing.username ?? action.username,
+            unread: 0,
+          }
+        : newChat(action.chatId, action.title, action.now ?? Date.now(), action.phone, action.username);
       return { ...state, activeChatId: action.chatId, chats: { ...state.chats, [action.chatId]: chat } };
     }
 
@@ -213,15 +219,18 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             ...state,
             chats: {
               ...state.chats,
-              [message.chatId]: newChat(message.chatId, action.title ?? message.chatId, undefined, message.timestamp),
+              [message.chatId]: newChat(message.chatId, action.title ?? message.chatId, message.timestamp),
             },
           };
 
       return updateChat(base, message.chatId, (c) => {
         const dup = c.messages.find((m) => m.id === message.id);
         const isActive = base.activeChatId === message.chatId;
-        // Replace a placeholder title (raw id or phone number) with the real name from MAX.
-        const placeholder = c.title === c.chatId || (c.phone !== undefined && c.title === formatPhone(c.phone));
+        // Replace a placeholder title (raw id, phone, @username) with the real name from Telegram.
+        const placeholder =
+          c.title === c.chatId ||
+          c.title === c.username ||
+          (c.phone !== undefined && c.title === formatPhone(c.phone));
         const title = placeholder && action.title ? action.title : c.title;
         if (dup) {
           return {

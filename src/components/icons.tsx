@@ -121,15 +121,22 @@ export const ClockIcon = (p: P) => (
   </svg>
 );
 
-export const MaxLogo = ({ size = 40 }: { size?: number }) => (
+/** App mark: a speech bubble on a blue gradient (deliberately not the Telegram logo). */
+export const AppLogo = ({ size = 40 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden>
     <defs>
-      <linearGradient id="maxlogo" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="#2D7BFF" />
-        <stop offset="1" stopColor="#8A3FFC" />
+      <linearGradient id="applogo" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stopColor="#4FB0F8" />
+        <stop offset="1" stopColor="#2A7FDC" />
       </linearGradient>
     </defs>
-    <rect width="64" height="64" rx="18" fill="url(#maxlogo)" />
-    <path d="M18 44V22l14 13 14-13v22" fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="32" cy="32" r="32" fill="url(#applogo)" />
+    <path
+      d="M20 22h24a5 5 0 0 1 5 5v11a5 5 0 0 1-5 5H31l-8 6v-6h-3a5 5 0 0 1-5-5V27a5 5 0 0 1 5-5Z"
+      fill="#fff"
+    />
+    <circle cx="25" cy="32.5" r="2.4" fill="#2A7FDC" />
+    <circle cx="32" cy="32.5" r="2.4" fill="#2A7FDC" />
+    <circle cx="39" cy="32.5" r="2.4" fill="#2A7FDC" />
   </svg>
 );

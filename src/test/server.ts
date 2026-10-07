@@ -2,8 +2,8 @@ import { delay, http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import type { Webhook } from '../api/types';
 
-export const API = 'https://3100.api.green-api.com';
-export const ID = '3100123456';
+export const API = 'https://4100.api.green-api.com';
+export const ID = '4100123456';
 export const TOKEN = 'secret-token';
 const base = `${API}/waInstance${ID}`;
 
@@ -33,9 +33,14 @@ export const handlers = [
     auth(params.token) ? HttpResponse.json({ stateInstance: fake.state }) : new HttpResponse(null, { status: 401 }),
   ),
   http.post(`${base}/checkAccount/:token`, async ({ request }) => {
-    const { phoneNumber } = (await request.json()) as { phoneNumber: number };
+    const { phoneNumber, username } = (await request.json()) as { phoneNumber?: number; username?: string };
+    if (username) {
+      return username.toLowerCase() === '@anya_dev'
+        ? HttpResponse.json({ exist: true, chatId: 'chat-anya', username: '@anya_dev', phoneNumber: 79991112233 })
+        : HttpResponse.json({ exist: false, chatId: '' });
+    }
     if (String(phoneNumber) === '77000000000') return HttpResponse.json({ exist: false, chatId: '' });
-    return HttpResponse.json({ exist: true, chatId: `chat-${phoneNumber}` });
+    return HttpResponse.json({ exist: true, chatId: `chat-${phoneNumber}`, phoneNumber });
   }),
   http.post(`${base}/getChatHistory/:token`, () => HttpResponse.json([])),
   http.post(`${base}/sendMessage/:token`, async ({ request }) => {

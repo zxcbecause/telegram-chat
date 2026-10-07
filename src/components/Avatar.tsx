@@ -24,7 +24,7 @@ function initials(title: string): string {
     .join('');
 }
 
-/** Initials on a stable gradient picked from the chat id, like in MAX. */
+/** Initials on a stable gradient picked from the chat id, like in Telegram. */
 export function Avatar({ id, title, size = 48 }: { id: string; title: string; size?: number }) {
   const [from, to] = GRADIENTS[hash(id) % GRADIENTS.length]!;
   return (

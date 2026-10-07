@@ -1,9 +1,9 @@
 {
-  "name": "max-chat",
+  "name": "telegram-chat",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Web chat for the MAX messenger built on GREEN-API (test assignment)",
+  "description": "Web chat for Telegram built on GREEN-API (test assignment)",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

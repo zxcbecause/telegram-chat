@@ -36,7 +36,7 @@ export function useSession() {
           ok: false,
           error:
             stateInstance === 'notAuthorized'
-              ? 'Инстанс не авторизован в MAX. Отсканируйте QR-код в личном кабинете GREEN-API'
+              ? 'Инстанс не авторизован в Telegram. Отсканируйте QR-код в личном кабинете GREEN-API'
               : stateInstance === 'starting'
                 ? 'Инстанс ещё запускается, попробуйте через минуту'
                 : `Инстанс недоступен (состояние: ${stateInstance})`,
