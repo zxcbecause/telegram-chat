@@ -18,6 +18,8 @@ export interface Message {
   status?: MessageStatus;
   error?: string;
   quotedId?: string;
+  /** Text of the quoted message when the API sent it (used if the original isn't loaded). */
+  quotedText?: string;
   /** true while `id` is still the local placeholder. */
   local?: boolean;
 }

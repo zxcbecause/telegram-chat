@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import type { ApiClient } from '../api/greenApi';
 import {
   describeStatusError,
+  isRenderableHistoryItem,
   isRenderableMessage,
   messageFromHistory,
   messageFromWebhook,
@@ -98,7 +99,7 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
       dispatch({ type: 'history/loading', chatId });
       try {
         const items = await client.getChatHistory(chatId, 50);
-        dispatch({ type: 'history/loaded', chatId, messages: (items ?? []).map(messageFromHistory) });
+        dispatch({ type: 'history/loaded', chatId, messages: (items ?? []).filter(isRenderableHistoryItem).map(messageFromHistory) });
       } catch {
         dispatch({ type: 'history/failed', chatId });
       } finally {

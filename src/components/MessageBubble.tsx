@@ -44,9 +44,11 @@ export const MessageBubble = memo(function MessageBubble({
         {message.quotedId && (
           <button className="bubble__quote" onClick={() => onJumpTo(message.quotedId!)} type="button">
             <span className="bubble__quote-author">
-              {quoted ? (quoted.direction === 'out' ? 'Вы' : chatTitle) : 'Ответ на сообщение'}
+              {quoted ? (quoted.direction === 'out' ? 'Вы' : chatTitle) : 'Ответ'}
             </span>
-            <span className="bubble__quote-text">{quoted ? (quoted.text ?? 'Вложение') : 'Сообщение не загружено'}</span>
+            <span className="bubble__quote-text">
+              {quoted ? (quoted.text ?? 'Вложение') : (message.quotedText ?? 'Сообщение не загружено')}
+            </span>
           </button>
         )}
 

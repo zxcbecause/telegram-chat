@@ -1,16 +1,53 @@
 import type { Message, MessageStatus } from '../state/chatReducer';
 import type { HistoryItem, MessageData, MessageWebhook, OutgoingStatus } from './types';
 
-const TEXT_TYPES = new Set(['textMessage', 'extendedTextMessage', 'quotedMessage']);
+/** Service events that share the message format but must not render as bubbles. */
+const SERVICE_TYPES = new Set(['reactionMessage', 'editedMessage', 'deletedMessage']);
 
-/** Text of a webhook message, or null for media/stickers/polls (not supported here). */
+type Loose = Record<string, unknown> | undefined;
+
+function str(v: unknown): string | undefined {
+  return typeof v === 'string' && v.length > 0 ? v : undefined;
+}
+
+function obj(v: unknown): Loose {
+  return v && typeof v === 'object' ? (v as Record<string, unknown>) : undefined;
+}
+
+/**
+ * Finds the text of a message wherever GREEN-API put it.
+ *
+ * The docs don't pin this down for every case: replies, forwards and messages
+ * with links arrive as textMessage / extendedTextMessage / quotedMessage with the
+ * text in different fields, and the history and webhook formats differ. So we
+ * look in every known place instead of trusting typeMessage. Media keep
+ * returning null (only text is supported by this client).
+ */
+export function findText(source: Loose): string | null {
+  if (!source) return null;
+  return (
+    str(source.textMessage) ??
+    str(obj(source.textMessageData)?.textMessage) ??
+    str(obj(source.extendedTextMessage)?.text) ??
+    str(obj(source.extendedTextMessageData)?.text) ??
+    str(source.text) ??
+    null
+  );
+}
+
+/** Text of a webhook message, or null for media/stickers/polls. */
 export function extractText(data: MessageData): string | null {
-  if (!TEXT_TYPES.has(data.typeMessage)) return null;
-  return data.textMessageData?.textMessage ?? data.extendedTextMessageData?.text ?? null;
+  return findText(data as unknown as Loose);
+}
+
+/** Text of the quoted message, if the API sent it along with the reply. */
+function quotedText(q: Loose): string | undefined {
+  return findText(q) ?? undefined;
 }
 
 export function messageFromWebhook(w: MessageWebhook): Message {
   const outgoing = w.typeWebhook !== 'incomingMessageReceived';
+  const q = w.messageData.quotedMessage;
   return {
     id: w.idMessage,
     chatId: w.senderData.chatId,
@@ -18,7 +55,8 @@ export function messageFromWebhook(w: MessageWebhook): Message {
     timestamp: w.timestamp * 1000,
     direction: outgoing ? 'out' : 'in',
     status: outgoing ? 'sent' : undefined,
-    quotedId: w.messageData.quotedMessage?.stanzaId,
+    quotedId: q?.stanzaId,
+    quotedText: quotedText(q as unknown as Loose),
   };
 }
 
@@ -29,17 +67,16 @@ export function titleFromWebhook(w: MessageWebhook): string | undefined {
 }
 
 export function messageFromHistory(item: HistoryItem): Message {
-  const text = TEXT_TYPES.has(item.typeMessage)
-    ? (item.textMessage ?? item.extendedTextMessage?.text ?? null)
-    : null;
+  const q = item.quotedMessage;
   return {
     id: item.idMessage,
     chatId: item.chatId,
-    text,
+    text: findText(item as unknown as Loose),
     timestamp: item.timestamp * 1000,
     direction: item.type === 'outgoing' ? 'out' : 'in',
     status: item.type === 'outgoing' ? toMessageStatus(item.statusMessage) : undefined,
-    quotedId: item.quotedMessage?.stanzaId,
+    quotedId: q?.stanzaId,
+    quotedText: quotedText(q as unknown as Loose),
   };
 }
 
@@ -67,5 +104,10 @@ export function describeStatusError(s: OutgoingStatus, description?: string): st
 
 /** Reaction/edit/delete events share the webhook type but shouldn't render as bubbles. */
 export function isRenderableMessage(w: MessageWebhook): boolean {
-  return !['reactionMessage', 'editedMessage', 'deletedMessage'].includes(w.messageData.typeMessage);
+  return !SERVICE_TYPES.has(w.messageData.typeMessage);
+}
+
+/** Same filter for chat history items. */
+export function isRenderableHistoryItem(item: HistoryItem): boolean {
+  return !SERVICE_TYPES.has(item.typeMessage);
 }

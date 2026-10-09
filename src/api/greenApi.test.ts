@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { API, fake, ID, server, TOKEN } from '../test/server';
 import { GreenApiClient, GreenApiError, guessApiUrl } from './greenApi';
-import { extractText, messageFromWebhook } from './mappers';
+import { extractText, messageFromHistory, messageFromWebhook } from './mappers';
 
 const client = new GreenApiClient({ apiUrl: `${API}/`, idInstance: ID, apiTokenInstance: TOKEN });
 
@@ -84,5 +84,37 @@ describe('mappers', () => {
       status: undefined,
       quotedId: 'q1',
     });
+  });
+});
+
+describe('findText (replies in different shapes)', () => {
+  it('finds the text of a reply wherever the API put it', () => {
+    const base = { type: 'incoming' as const, idMessage: 'x', timestamp: 1, chatId: 'c' };
+    const shapes = [
+      { ...base, typeMessage: 'quotedMessage', textMessage: 'да' },
+      { ...base, typeMessage: 'quotedMessage', extendedTextMessage: { text: 'да' } },
+      { ...base, typeMessage: 'extendedTextMessage', extendedTextMessageData: { text: 'да' } },
+      { ...base, typeMessage: 'replyMessage', textMessageData: { textMessage: 'да' } },
+    ];
+    for (const item of shapes) {
+      expect(messageFromHistory(item as never).text).toBe('да');
+    }
+  });
+
+  it('uses the quoted text sent with a reply and keeps media as attachments', () => {
+    const m = messageFromHistory({
+      type: 'incoming',
+      idMessage: 'r',
+      timestamp: 1,
+      chatId: 'c',
+      typeMessage: 'quotedMessage',
+      textMessage: 'ответ',
+      quotedMessage: { stanzaId: 'old', textMessage: 'исходное' },
+    });
+    expect(m).toMatchObject({ text: 'ответ', quotedId: 'old', quotedText: 'исходное' });
+    expect(
+      messageFromHistory({ type: 'incoming', idMessage: 'i', timestamp: 1, chatId: 'c', typeMessage: 'imageMessage' })
+        .text,
+    ).toBeNull();
   });
 });
