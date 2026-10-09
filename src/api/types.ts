@@ -118,6 +118,7 @@ export interface HistoryItem {
   extendedTextMessage?: { text: string };
   statusMessage?: string;
   senderName?: string;
+  senderContactName?: string;
   quotedMessage?: QuotedMessage;
   caption?: string;
   fileName?: string;

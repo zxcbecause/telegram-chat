@@ -75,7 +75,7 @@ export type ChatAction =
   | { type: 'chat/remove'; chatId: string }
   | { type: 'chat/draft'; chatId: string; draft: string }
   | { type: 'history/loading'; chatId: string }
-  | { type: 'history/loaded'; chatId: string; messages: Message[] }
+  | { type: 'history/loaded'; chatId: string; messages: Message[]; senderName?: string }
   | { type: 'history/failed'; chatId: string }
   | { type: 'send/start'; chatId: string; localId: string; text: string; quotedId?: string; now?: number }
   | { type: 'send/success'; chatId: string; localId: string; idMessage: string }
@@ -112,6 +112,11 @@ function newChat(chatId: string, title: string, now: number, phone?: string, use
 function sortByTime(messages: Message[]): Message[] {
   const sec = (m: Message) => Math.floor(m.timestamp / 1000);
   return [...messages].sort((a, b) => sec(a) - sec(b));
+}
+
+/** The title is still the raw id, phone or @username we opened the chat with. */
+function isPlaceholderTitle(c: Chat): boolean {
+  return c.title === c.chatId || c.title === c.username || (c.phone !== undefined && c.title === formatPhone(c.phone));
 }
 
 function updateChat(state: ChatState, chatId: string, fn: (chat: Chat) => Chat): ChatState {
@@ -177,6 +182,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         const last = messages[messages.length - 1];
         return {
           ...c,
+          // A chat opened by number/@username gets the person's name from history.
+          title: action.senderName && isPlaceholderTitle(c) ? action.senderName : c.title,
           messages,
           history: 'loaded',
           updatedAt: Math.max(c.updatedAt, last?.timestamp ?? 0),
@@ -269,11 +276,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         const dup = c.messages.find((m) => m.id === message.id);
         const isActive = base.activeChatId === message.chatId;
         // Replace a placeholder title (raw id, phone, @username) with the real name from Telegram.
-        const placeholder =
-          c.title === c.chatId ||
-          c.title === c.username ||
-          (c.phone !== undefined && c.title === formatPhone(c.phone));
-        const title = placeholder && action.title ? action.title : c.title;
+        const title = isPlaceholderTitle(c) && action.title ? action.title : c.title;
         if (dup) {
           // Our own send echoed back: take the server time and put it where it belongs.
           const patched = patchMessage(c, message.id, (m) => ({

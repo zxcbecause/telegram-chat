@@ -10,7 +10,7 @@ import {
   titleFromWebhook,
   toMessageStatus,
 } from '../api/mappers';
-import type { InstanceState, MessageWebhook, StateWebhook, StatusWebhook, Webhook } from '../api/types';
+import type { HistoryItem, InstanceState, MessageWebhook, StateWebhook, StatusWebhook, Webhook } from '../api/types';
 import { formatPhone, parseRecipient } from '../lib/phone';
 import { keys, load, remove, save } from '../lib/storage';
 import { chatReducer, initialState, selectChatList, type Chat, type ChatState } from '../state/chatReducer';
@@ -20,6 +20,12 @@ const MESSAGES_KEPT_PER_CHAT = 100;
 /** GREEN-API warns that re-checking the same missing number can get the account restricted. */
 const NOT_FOUND_CACHE_MS = 10 * 60 * 1000;
 const CLOCK_SKEW_LIMIT_MS = 15 * 60 * 1000;
+
+/** The other person's name, taken from their messages in a personal chat's history. */
+function nameFromHistory(items: HistoryItem[] | null | undefined): string | undefined {
+  const theirs = items?.find((i) => i.type === 'incoming' && (i.senderContactName || i.senderName));
+  return theirs?.senderContactName || theirs?.senderName || undefined;
+}
 
 let localSeq = 0;
 const newLocalId = () => `local-${Date.now()}-${++localSeq}`;
@@ -134,7 +140,12 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
       dispatch({ type: 'history/loading', chatId });
       try {
         const items = await client.getChatHistory(chatId, 50);
-        dispatch({ type: 'history/loaded', chatId, messages: (items ?? []).filter(isRenderableHistoryItem).map(messageFromHistory) });
+        dispatch({
+          type: 'history/loaded',
+          chatId,
+          messages: (items ?? []).filter(isRenderableHistoryItem).map(messageFromHistory),
+          senderName: nameFromHistory(items),
+        });
       } catch {
         dispatch({ type: 'history/failed', chatId });
       } finally {
@@ -159,6 +170,7 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
           type: 'history/loaded',
           chatId,
           messages: (items ?? []).filter(isRenderableHistoryItem).map(messageFromHistory),
+          senderName: nameFromHistory(items),
         });
       } catch {
         /* keep what we have; the next refresh or notification will catch up */

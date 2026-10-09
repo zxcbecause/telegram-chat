@@ -204,3 +204,15 @@ describe('send/start ordering', () => {
     expect(s.chats.c1!.messages.map((m) => m.id)).toEqual(['in1', 'l1']);
   });
 });
+
+describe('chat title from history', () => {
+  it('replaces the @username/phone placeholder with the name found in history, but never a real name', () => {
+    let s = run([
+      { type: 'chat/open', chatId: 'c1', title: '@ksenia', username: '@ksenia', now: 1 },
+      { type: 'history/loaded', chatId: 'c1', messages: [], senderName: 'Ксения' },
+    ]);
+    expect(s.chats.c1!.title).toBe('Ксения');
+    s = chatReducer(s, { type: 'history/loaded', chatId: 'c1', messages: [], senderName: 'Другое имя' });
+    expect(s.chats.c1!.title).toBe('Ксения');
+  });
+});

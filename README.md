@@ -4,17 +4,30 @@
 
 ТЗ разрешает вместо MAX сделать клиент для WhatsApp или Telegram. Выбран Telegram, поэтому прототипом интерфейса взят не web.max.ru, а [Telegram Web](https://web.telegram.org/): обои, зелёные исходящие сообщения, фиолетовый акцент в тёмной теме.
 
-**Демо:** _ссылка на деплой_ (без инстанса: добавьте `?demo` к ссылке) · **Стек:** React 18, TypeScript, Vite, Framer Motion, Vitest, MSW
+**Онлайн:** https://zxcbecause.github.io/telegram-chat/ · **Демо без инстанса:** https://zxcbecause.github.io/telegram-chat/?demo
+**Запуск локально:** [docs/SETUP.md](docs/SETUP.md) · **Стек:** React 18, TypeScript, Vite, Framer Motion, Vitest, MSW, Playwright
 
 | Светлая тема | Тёмная тема |
 | --- | --- |
-| ![Чат, светлая тема](docs/screenshots/3-chat-light.png) | ![Чат, тёмная тема](docs/screenshots/3-chat-dark.png) |
+| ![Чат, светлая тема](docs/screenshots/02-chat-light.jpg) | ![Чат, тёмная тема](docs/screenshots/06-chat-dark.jpg) |
 
 <p>
-  <img src="docs/screenshots/1-login-light.png" width="49%" alt="Экран входа" />
-  <img src="docs/screenshots/5-mobile-list.png" width="24%" alt="Список чатов на телефоне" />
-  <img src="docs/screenshots/4-mobile-chat.png" width="24%" alt="Чат на телефоне" />
+  <img src="docs/screenshots/01-login.jpg" width="49%" alt="Экран входа" />
+  <img src="docs/screenshots/09-mobile-list.jpg" width="24%" alt="Список чатов на телефоне" />
+  <img src="docs/screenshots/08-mobile-chat.jpg" width="24%" alt="Чат на телефоне" />
 </p>
+
+<details>
+<summary>Ещё скриншоты (меню, ответ, баннер настроек, повтор отправки)</summary>
+
+| | |
+| --- | --- |
+| ![Меню входящего сообщения](docs/screenshots/03-menu-incoming.jpg) | ![Ответ с цитатой](docs/screenshots/04-reply.jpg) |
+| ![Меню своего сообщения](docs/screenshots/05-menu-own.jpg) | ![Баннер настроек инстанса](docs/screenshots/07-settings-banner.jpg) |
+| ![Повтор отправки в демо](docs/screenshots/10-demo-retry.jpg) | |
+
+Все чаты на скриншотах вымышленные.
+</details>
 
 ## Демо-режим
 
@@ -60,6 +73,8 @@
 
 ## Запуск
 
+Подробная пошаговая инструкция (с созданием инстанса и решением проблем) — в [docs/SETUP.md](docs/SETUP.md).
+
 Нужен **Node.js 22.12+** (`node -v`; версия также в `.nvmrc`).
 
 ```bash
@@ -76,7 +91,7 @@ npm run typecheck
 npm run build          # статическая сборка в dist/
 ```
 
-`dist/` — обычная статика, деплоится на Vercel, Netlify или GitHub Pages без настройки (`base: './'`).
+`dist/` — обычная статика (`base: './'`). Каждый пуш в `main` публикуется на GitHub Pages workflow-ом [`deploy.yml`](.github/workflows/deploy.yml).
 
 ### Настройка инстанса GREEN-API
 
@@ -116,7 +131,7 @@ src/
 
 ## Тесты
 
-**119 unit- и интеграционных тестов** (Vitest + Testing Library + [MSW](https://mswjs.io/) как фейковый GREEN-API), покрытие строк ~96 %, и **9 e2e-сценариев** в настоящем Chromium, на десктопе и в мобильном viewport.
+**120 unit- и интеграционных тестов** (Vitest + Testing Library + [MSW](https://mswjs.io/) как фейковый GREEN-API), покрытие строк ~96 %, и **9 e2e-сценариев** в настоящем Chromium, на десктопе и в мобильном viewport.
 
 | Файл | Что проверяет |
 | --- | --- |
