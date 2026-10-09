@@ -137,14 +137,18 @@ describe('App (end-to-end against a fake GREEN-API)', () => {
     await user.type(within(chat).getByLabelText('Текст сообщения'), 'Опечатка{Enter}');
     await within(chat).findByRole('img', { name: 'Отправлено' });
 
-    await user.click(within(chat).getByRole('button', { name: 'Удалить сообщение' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Удалить у всех' }));
+    // Actions are in the context menu (right click / long press).
+    fireEvent.contextMenu(within(chat).getByText('Опечатка'));
+    expect(await screen.findByRole('menuitem', { name: 'Ответить' })).toBeInTheDocument();
+    await user.click(screen.getByRole('menuitem', { name: 'Удалить у всех' }));
     await waitFor(() => expect(within(chat).queryByText('Опечатка')).not.toBeInTheDocument());
     expect(fake.deletedMessages).toEqual([{ chatId: 'chat-77001234567', idMessage: 'srv-1', onlySenderDelete: false }]);
 
-    await user.click(within(chat).getByRole('button', { name: 'Удалить чат' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Удалить чат' }));
+    // Right click on the chat in the list → remove it.
     const list = screen.getByRole('complementary', { name: 'Чаты' });
+    fireEvent.contextMenu(within(list).getByText('+7 700 123-45-67'));
+    await user.click(await screen.findByRole('menuitem', { name: 'Удалить чат' }));
     await waitFor(() => expect(within(list).queryByText('+7 700 123-45-67')).not.toBeInTheDocument());
+    expect(screen.queryByRole('region', { name: /Чат с/ })).not.toBeInTheDocument();
   });
 });

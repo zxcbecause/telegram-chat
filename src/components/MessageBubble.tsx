@@ -31,41 +31,45 @@ export const MessageBubble = memo(function MessageBubble({
   onJumpTo,
   onDelete,
 }: Props) {
-  const [menu, setMenu] = useState<null | 'all' | 'delete'>(null);
+  // Actions live in a context menu: right click on desktop, long press on phones.
+  const [menuOpen, setMenuOpen] = useState(false);
   const [menuUp, setMenuUp] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const closeMenu = useCallback(() => setMenu(null), []);
-  // Near the bottom of the screen the menu opens upwards so it isn't cut off.
-  const openMenu = (kind: 'all' | 'delete') => {
-    const rect = ref.current?.getBoundingClientRect();
-    setMenuUp(!!rect && rect.bottom > window.innerHeight * 0.55);
-    setMenu(kind);
-  };
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
   const out = message.direction === 'out';
   const failed = message.status === 'failed';
   const canReply = !message.local && !message.deleting;
   // GREEN-API can only delete our own messages.
   const canDelete = out && !message.local && !message.deleting;
 
-  const deleteItems: MenuItem[] = [
-    { label: 'Удалить у всех', icon: <TrashIcon width={16} height={16} />, danger: true, onSelect: () => onDelete(message.id, true) },
-    { label: 'Удалить только у меня', icon: <TrashIcon width={16} height={16} />, onSelect: () => onDelete(message.id, false) },
+  const menuItems: MenuItem[] = [
+    ...(canReply
+      ? [{ label: 'Ответить', icon: <ReplyIcon width={16} height={16} />, onSelect: () => onReply(message) }]
+      : []),
+    ...(canDelete
+      ? [
+          {
+            label: 'Удалить у всех',
+            icon: <TrashIcon width={16} height={16} />,
+            danger: true,
+            onSelect: () => onDelete(message.id, true),
+          },
+          {
+            label: 'Удалить только у меня',
+            icon: <TrashIcon width={16} height={16} />,
+            onSelect: () => onDelete(message.id, false),
+          },
+        ]
+      : []),
   ];
-  const menuItems: MenuItem[] =
-    menu === 'delete'
-      ? deleteItems
-      : [
-          ...(canReply
-            ? [{ label: 'Ответить', icon: <ReplyIcon width={16} height={16} />, onSelect: () => onReply(message) }]
-            : []),
-          ...(canDelete ? deleteItems : []),
-        ];
 
-  // Right click on desktop, long press on phones.
   const onContextMenu = (e: MouseEvent) => {
-    if (!canReply && !canDelete) return;
+    if (!menuItems.length) return;
     e.preventDefault();
-    openMenu('all');
+    // Near the bottom of the screen the menu opens upwards so it isn't cut off.
+    const rect = ref.current?.getBoundingClientRect();
+    setMenuUp(!!rect && rect.bottom > window.innerHeight * 0.55);
+    setMenuOpen(true);
   };
   const { attachment } = message;
 
@@ -112,35 +116,9 @@ export const MessageBubble = memo(function MessageBubble({
         </span>
       </div>
 
-      {(canReply || canDelete) && (
-        <div className="msg__actions">
-          {canReply && (
-            <button className="icon-btn" onClick={() => onReply(message)} aria-label="Ответить" title="Ответить">
-              <ReplyIcon width={18} height={18} />
-            </button>
-          )}
-          {canDelete && (
-            <button
-              className="icon-btn"
-              onClick={() => openMenu('delete')}
-              aria-label="Удалить сообщение"
-              title="Удалить"
-              aria-haspopup="menu"
-            >
-              <TrashIcon width={17} height={17} />
-            </button>
-          )}
-        </div>
-      )}
-
       <AnimatePresence>
-        {menu && menuItems.length > 0 && (
-          <ActionMenu
-            className={`msg__menu ${menuUp ? 'msg__menu--up' : ''}`}
-            title={menu === 'delete' ? 'Удалить сообщение?' : undefined}
-            items={menuItems}
-            onClose={closeMenu}
-          />
+        {menuOpen && menuItems.length > 0 && (
+          <ActionMenu className={`msg__menu ${menuUp ? 'msg__menu--up' : ''}`} items={menuItems} onClose={closeMenu} />
         )}
       </AnimatePresence>
 

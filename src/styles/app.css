@@ -828,6 +828,15 @@ a:hover {
   flex: 1;
 }
 
+.chat-item__wrap {
+  position: relative;
+}
+
+.chat-item__menu {
+  top: calc(100% - 6px);
+  right: 8px;
+}
+
 .chat-item {
   display: flex;
   align-items: center;
@@ -1218,52 +1227,6 @@ a:hover {
   white-space: nowrap;
   max-width: 320px;
   opacity: 0.85;
-}
-
-/* Hover actions next to a bubble: reply, delete. */
-.msg__actions {
-  position: absolute;
-  top: 50%;
-  display: flex;
-  gap: 4px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-50%);
-  transition:
-    opacity 0.15s,
-    transform 0.15s var(--ease);
-}
-
-.msg__actions .icon-btn {
-  width: 32px;
-  height: 32px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-}
-
-.msg__actions .icon-btn:hover {
-  color: var(--accent);
-}
-
-.msg--in .msg__actions {
-  left: calc(100% + 8px);
-}
-
-.msg--out .msg__actions {
-  right: calc(100% + 8px);
-  flex-direction: row-reverse;
-}
-
-.msg:hover .msg__actions,
-.msg__actions:focus-within {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-@media (hover: none) {
-  .msg__actions {
-    display: none;
-  }
 }
 
 .bubble--deleting {

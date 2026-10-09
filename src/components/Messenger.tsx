@@ -35,6 +35,7 @@ export function Messenger({ client, idInstance, persist, demo, theme, onToggleTh
         onToggleTheme={onToggleTheme}
         onLogout={onLogout}
         onSelect={api.selectChat}
+        onRemove={api.removeChat}
         onCreate={api.openChat}
       />
 

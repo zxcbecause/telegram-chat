@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useState, type FormEvent, type ReactNode } from 'react';
 import type { ConnectionState } from '../hooks/useNotifications';
 import type { ThemePref } from '../hooks/useTheme';
 import { messagePreview } from '../lib/attachment';
@@ -7,7 +7,8 @@ import { listLabel } from '../lib/date';
 import { maskPhoneInput } from '../lib/phone';
 import type { Chat } from '../state/chatReducer';
 import { Avatar } from './Avatar';
-import { AutoThemeIcon, LogoutIcon, AppLogo, MoonIcon, PlusIcon, SunIcon } from './icons';
+import { ActionMenu } from './ActionMenu';
+import { AppLogo, AutoThemeIcon, LogoutIcon, MoonIcon, PlusIcon, SunIcon, TrashIcon } from './icons';
 import { StatusMark } from './StatusMark';
 
 interface Props {
@@ -21,6 +22,7 @@ interface Props {
   onToggleTheme: () => void;
   onLogout: () => void;
   onSelect: (chatId: string) => void;
+  onRemove: (chatId: string) => void;
   onCreate: (recipient: string) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
@@ -40,9 +42,7 @@ export function Sidebar(props: Props) {
         <div className="sidebar__brand">
           <AppLogo size={30} />
           <div>
-            <div className="sidebar__title">
-              Чаты {props.demo && <span className="demo-tag">Демо</span>}
-            </div>
+            <div className="sidebar__title">Чаты {props.demo && <span className="demo-tag">Демо</span>}</div>
             <div className={`conn conn--${connection}`} role="status" aria-live="polite">
               <span className="conn__dot" />
               {CONNECTION_TEXT[connection]}
@@ -85,7 +85,12 @@ export function Sidebar(props: Props) {
               exit={{ opacity: 0, height: 0 }}
               transition={{ type: 'spring', stiffness: 500, damping: 40 }}
             >
-              <ChatListItem chat={chat} active={chat.chatId === activeChatId} onSelect={props.onSelect} />
+              <ChatListItem
+                chat={chat}
+                active={chat.chatId === activeChatId}
+                onSelect={props.onSelect}
+                onRemove={props.onRemove}
+              />
             </motion.li>
           ))}
         </AnimatePresence>
@@ -101,45 +106,82 @@ export function Sidebar(props: Props) {
   );
 }
 
-function ChatListItem({ chat, active, onSelect }: { chat: Chat; active: boolean; onSelect: (id: string) => void }) {
+interface ItemProps {
+  chat: Chat;
+  active: boolean;
+  onSelect: (id: string) => void;
+  onRemove: (id: string) => void;
+}
+
+function ChatListItem({ chat, active, onSelect, onRemove }: ItemProps) {
+  // Right click (long press on phones) → remove the chat from the list.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
   const last = chat.messages[chat.messages.length - 1];
   const preview = chat.draft
     ? { draft: true, text: chat.draft }
     : { draft: false, text: last ? messagePreview(last) : 'Нет сообщений' };
 
   return (
-    <button className={`chat-item ${active ? 'is-active' : ''}`} onClick={() => onSelect(chat.chatId)}>
-      <Avatar id={chat.chatId} title={chat.title} />
-      <div className="chat-item__body">
-        <div className="chat-item__row">
-          <span className="chat-item__title">{chat.title}</span>
-          <span className="chat-item__time">
-            {last?.direction === 'out' && last.status && <StatusMark status={last.status} />}
-            {last ? listLabel(last.timestamp) : ''}
-          </span>
+    <div className="chat-item__wrap">
+      <button
+        className={`chat-item ${active ? 'is-active' : ''}`}
+        onClick={() => onSelect(chat.chatId)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setMenuOpen(true);
+        }}
+      >
+        <Avatar id={chat.chatId} title={chat.title} />
+        <div className="chat-item__body">
+          <div className="chat-item__row">
+            <span className="chat-item__title">{chat.title}</span>
+            <span className="chat-item__time">
+              {last?.direction === 'out' && last.status && <StatusMark status={last.status} />}
+              {last ? listLabel(last.timestamp) : ''}
+            </span>
+          </div>
+          <div className="chat-item__row">
+            <span className="chat-item__preview">
+              {preview.draft && <span className="chat-item__draft">Черновик: </span>}
+              {!preview.draft && last?.direction === 'out' && <span className="chat-item__you">Вы: </span>}
+              {preview.text}
+            </span>
+            <AnimatePresence>
+              {chat.unread > 0 && (
+                <motion.span
+                  className="badge"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  aria-label={`${chat.unread} непрочитанных`}
+                >
+                  {chat.unread > 99 ? '99+' : chat.unread}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
-        <div className="chat-item__row">
-          <span className="chat-item__preview">
-            {preview.draft && <span className="chat-item__draft">Черновик: </span>}
-            {!preview.draft && last?.direction === 'out' && <span className="chat-item__you">Вы: </span>}
-            {preview.text}
-          </span>
-          <AnimatePresence>
-            {chat.unread > 0 && (
-              <motion.span
-                className="badge"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-                aria-label={`${chat.unread} непрочитанных`}
-              >
-                {chat.unread > 99 ? '99+' : chat.unread}
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    </button>
+      </button>
+      <AnimatePresence>
+        {menuOpen && (
+          <ActionMenu
+            className="chat-item__menu"
+            title="Удалить чат из списка? Переписка в Telegram останется, а новое сообщение вернёт чат."
+            items={[
+              {
+                label: 'Удалить чат',
+                icon: <TrashIcon width={16} height={16} />,
+                danger: true,
+                onSelect: () => onRemove(chat.chatId),
+              },
+              { label: 'Отмена', onSelect: () => {} },
+            ]}
+            onClose={closeMenu}
+          />
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -176,7 +218,13 @@ function NewChatForm({ onCreate }: { onCreate: Props['onCreate'] }) {
             setError(null);
           }}
         />
-        <button className="new-chat__btn" type="submit" disabled={busy || !phone} aria-label="Создать чат" title="Создать чат">
+        <button
+          className="new-chat__btn"
+          type="submit"
+          disabled={busy || !phone}
+          aria-label="Создать чат"
+          title="Создать чат"
+        >
           {busy ? <span className="spinner spinner--sm" /> : <PlusIcon width={20} height={20} />}
         </button>
       </div>
