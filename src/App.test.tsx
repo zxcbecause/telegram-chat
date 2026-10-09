@@ -1,7 +1,8 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
 import userEvent from '@testing-library/user-event';
 import App from './App';
-import { fake, ID, TOKEN } from './test/server';
+import { API, fake, ID, server, TOKEN } from './test/server';
 
 beforeEach(() => fake.reset());
 
@@ -78,5 +79,50 @@ describe('App (end-to-end against a fake GREEN-API)', () => {
     await user.click(screen.getByRole('button', { name: 'Создать чат' }));
     const chat = await screen.findByRole('region', { name: 'Чат с @anya_dev' });
     expect(within(chat).getByText('+7 999 111-22-33')).toBeInTheDocument();
+  });
+
+  it('warns when notifications are off in the instance and turns them on', async () => {
+    fake.settings.incomingWebhook = 'no';
+    const user = userEvent.setup();
+    render(<App />);
+    await login(user);
+
+    const banner = await screen.findByRole('alert');
+    expect(banner).toHaveTextContent('выключены уведомления о входящих сообщениях');
+    await user.click(within(banner).getByRole('button', { name: 'Включить уведомления' }));
+
+    expect(await screen.findByText('Настройки сохранены')).toBeInTheDocument();
+    expect(fake.settings).toMatchObject({ incomingWebhook: 'yes', webhookUrl: '' });
+  });
+
+  it('re-syncs the open chat from history when the tab gets focus', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await login(user);
+    await user.type(await screen.findByLabelText('Номер телефона или @username получателя'), '77001234567');
+    await user.click(screen.getByRole('button', { name: 'Создать чат' }));
+    const chat = await screen.findByRole('region', { name: /Чат с/ });
+    await within(chat).findByText('Здесь пока пусто');
+
+    // A message that never came through notifications, plus a file with a caption.
+    server.use(
+      http.post(`${API}/waInstance${ID}/getChatHistory/:token`, () =>
+        HttpResponse.json([
+          {
+            type: 'incoming',
+            idMessage: 'f1',
+            timestamp: Math.floor(Date.now() / 1000),
+            typeMessage: 'documentMessage',
+            chatId: 'chat-77001234567',
+            fileName: 'отчёт.xlsx',
+            caption: 'Файлы надо смотреть?',
+          },
+        ]),
+      ),
+    );
+    fireEvent(window, new Event('focus'));
+
+    expect(await within(chat).findByText('Файлы надо смотреть?')).toBeInTheDocument();
+    expect(within(chat).getByText('отчёт.xlsx')).toBeInTheDocument();
   });
 });

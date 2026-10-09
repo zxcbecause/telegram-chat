@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from 'react';
+import { messagePreview } from '../lib/attachment';
 import type { Message } from '../state/chatReducer';
 import { CloseIcon, ReplyIcon, SendIcon } from './icons';
 
@@ -55,7 +56,7 @@ export function Composer({ chatId, value, onChange, onSend, replyTo, replyAuthor
             <ReplyIcon className="reply-bar__icon" width={20} height={20} />
             <div className="reply-bar__body">
               <span className="reply-bar__author">{replyAuthor}</span>
-              <span className="reply-bar__text">{replyTo.text}</span>
+              <span className="reply-bar__text">{messagePreview(replyTo)}</span>
             </div>
             <button className="icon-btn" onClick={onCancelReply} aria-label="Отменить ответ">
               <CloseIcon width={18} height={18} />

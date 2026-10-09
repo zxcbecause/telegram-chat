@@ -46,15 +46,27 @@ export interface QuotedMessage {
   textMessage?: string;
 }
 
+/** File part of a media message (photo, video, document, audio, sticker). */
+export interface FileData {
+  downloadUrl?: string;
+  caption?: string;
+  fileName?: string;
+  mimeType?: string;
+}
+
 export interface MessageData {
   typeMessage: string;
   textMessageData?: { textMessage: string };
   extendedTextMessageData?: { text: string };
+  fileMessageData?: FileData;
+  pollMessageData?: { name?: string };
   quotedMessage?: QuotedMessage;
 }
 
 export interface SenderData {
   chatId: string;
+  /** user | bot | group | supergroup | channel */
+  chatType?: string;
   chatName?: string;
   sender?: string;
   senderName?: string;
@@ -107,4 +119,19 @@ export interface HistoryItem {
   statusMessage?: string;
   senderName?: string;
   quotedMessage?: QuotedMessage;
+  caption?: string;
+  fileName?: string;
+  mimeType?: string;
+  downloadUrl?: string;
+  pollMessageData?: { name?: string };
+}
+
+/** "yes" / "no" flags of the instance (GetSettings / SetSettings). */
+export interface InstanceSettings {
+  webhookUrl?: string;
+  incomingWebhook?: string;
+  outgoingWebhook?: string;
+  outgoingMessageWebhook?: string;
+  outgoingAPIMessageWebhook?: string;
+  stateWebhook?: string;
 }

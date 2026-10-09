@@ -1,4 +1,4 @@
-import type { Message, MessageStatus } from '../state/chatReducer';
+import type { Attachment, AttachmentKind, Message, MessageStatus } from '../state/chatReducer';
 import type { HistoryItem, MessageData, MessageWebhook, OutgoingStatus } from './types';
 
 /** Service events that share the message format but must not render as bubbles. */
@@ -35,9 +35,53 @@ export function findText(source: Loose): string | null {
   );
 }
 
-/** Text of a webhook message, or null for media/stickers/polls. */
+const TEXT_TYPES = new Set(['textMessage', 'extendedTextMessage', 'quotedMessage']);
+
+const ATTACHMENT_KINDS: Record<string, AttachmentKind> = {
+  imageMessage: 'photo',
+  videoMessage: 'video',
+  documentMessage: 'document',
+  audioMessage: 'audio',
+  stickerMessage: 'sticker',
+  pollMessage: 'poll',
+  locationMessage: 'location',
+  contactMessage: 'contact',
+  contactsArrayMessage: 'contact',
+};
+
+/**
+ * Splits a message into text + attachment. `source` is a history item or the
+ * webhook's messageData; `file` is where that format keeps file details.
+ */
+function parseContent(
+  typeMessage: string,
+  source: Loose,
+  file: Loose,
+): { text: string | null; attachment?: Attachment } {
+  if (TEXT_TYPES.has(typeMessage)) {
+    const text = findText(source);
+    if (text) return { text };
+    // A "text" message without text in any known field: fall through and label it.
+  }
+
+  const kind = ATTACHMENT_KINDS[typeMessage];
+  const text = str(file?.caption) ?? findText(source);
+  if (kind) {
+    const name = kind === 'poll' ? str(obj(source?.pollMessageData)?.name) : str(file?.fileName);
+    // Photos and videos get generated names like "1769056990.jpg" — not worth showing.
+    const keepName = kind === 'document' || kind === 'poll' || kind === 'audio';
+    return { text, attachment: { kind, ...(keepName && name ? { name } : {}) } };
+  }
+
+  // Unknown type: show its text if any, otherwise say what it is.
+  if (text) return { text };
+  if (import.meta.env.DEV) console.warn('[chat] unsupported message, please report:', source);
+  return { text: null, attachment: { kind: 'other', name: typeMessage } };
+}
+
+/** Text of a webhook message (caption for files), or null when there is none. */
 export function extractText(data: MessageData): string | null {
-  return findText(data as unknown as Loose);
+  return parseContent(data.typeMessage, data as unknown as Loose, obj(data.fileMessageData)).text;
 }
 
 /** Text of the quoted message, if the API sent it along with the reply. */
@@ -51,13 +95,23 @@ export function messageFromWebhook(w: MessageWebhook): Message {
   return {
     id: w.idMessage,
     chatId: w.senderData.chatId,
-    text: extractText(w.messageData),
+    ...parseContent(w.messageData.typeMessage, w.messageData as unknown as Loose, obj(w.messageData.fileMessageData)),
     timestamp: w.timestamp * 1000,
     direction: outgoing ? 'out' : 'in',
     status: outgoing ? 'sent' : undefined,
     quotedId: q?.stanzaId,
     quotedText: quotedText(q as unknown as Loose),
   };
+}
+
+/**
+ * Group and channel traffic from a personal account would flood the chat list,
+ * and this client is about one-to-one chats. Group chatIds are negative.
+ */
+export function isPersonalChat(w: MessageWebhook): boolean {
+  const type = w.senderData.chatType;
+  if (type) return type === 'user' || type === 'bot';
+  return !w.senderData.chatId.startsWith('-');
 }
 
 /** Display name for a chat, from the most specific field available. */
@@ -71,7 +125,8 @@ export function messageFromHistory(item: HistoryItem): Message {
   return {
     id: item.idMessage,
     chatId: item.chatId,
-    text: findText(item as unknown as Loose),
+    // History keeps file fields (caption, fileName) on the item itself.
+    ...parseContent(item.typeMessage, item as unknown as Loose, item as unknown as Loose),
     timestamp: item.timestamp * 1000,
     direction: item.type === 'outgoing' ? 'out' : 'in',
     status: item.type === 'outgoing' ? toMessageStatus(item.statusMessage) : undefined,

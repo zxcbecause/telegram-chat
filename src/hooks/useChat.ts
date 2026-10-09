@@ -3,6 +3,7 @@ import type { ApiClient } from '../api/greenApi';
 import {
   describeStatusError,
   isRenderableHistoryItem,
+  isPersonalChat,
   isRenderableMessage,
   messageFromHistory,
   messageFromWebhook,
@@ -63,6 +64,8 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
       case 'outgoingAPIMessageReceived': {
         const mw = w as MessageWebhook;
         if (!isRenderableMessage(mw)) return;
+        // Groups/channels are skipped unless the user opened that chat on purpose.
+        if (!isPersonalChat(mw) && !stateRef.current.chats[mw.senderData.chatId]) return;
         dispatch({ type: 'message/received', message: messageFromWebhook(mw), title: titleFromWebhook(mw) });
         return;
       }
@@ -102,6 +105,31 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
         dispatch({ type: 'history/loaded', chatId, messages: (items ?? []).filter(isRenderableHistoryItem).map(messageFromHistory) });
       } catch {
         dispatch({ type: 'history/failed', chatId });
+      } finally {
+        historyInFlight.current.delete(chatId);
+      }
+    },
+    [client],
+  );
+
+  /**
+   * Silent re-sync of an already loaded chat: merges fresh history without the
+   * skeleton or a scroll jump. A safety net for notifications that arrive late
+   * (or not at all when the instance settings are off); duplicates are merged by id.
+   */
+  const refreshHistory = useCallback(
+    async (chatId: string) => {
+      if (historyInFlight.current.has(chatId)) return;
+      historyInFlight.current.add(chatId);
+      try {
+        const items = await client.getChatHistory(chatId, 50);
+        dispatch({
+          type: 'history/loaded',
+          chatId,
+          messages: (items ?? []).filter(isRenderableHistoryItem).map(messageFromHistory),
+        });
+      } catch {
+        /* keep what we have; the next refresh or notification will catch up */
       } finally {
         historyInFlight.current.delete(chatId);
       }
@@ -210,8 +238,9 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
       sendMessage,
       retryMessage,
       loadHistory,
+      refreshHistory,
     }),
-    [openChat, sendMessage, retryMessage, loadHistory],
+    [openChat, sendMessage, retryMessage, loadHistory, refreshHistory],
   );
 
   return {

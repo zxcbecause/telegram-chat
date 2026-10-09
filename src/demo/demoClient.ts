@@ -186,6 +186,20 @@ export class DemoClient implements ApiClient {
     return chat;
   }
 
+  async getSettings() {
+    return {
+      webhookUrl: '',
+      incomingWebhook: 'yes',
+      outgoingWebhook: 'yes',
+      outgoingMessageWebhook: 'yes',
+      outgoingAPIMessageWebhook: 'yes',
+    };
+  }
+
+  async setSettings() {
+    return { saveSettings: true };
+  }
+
   async getStateInstance() {
     await delay(200);
     return { stateInstance: 'authorized' };

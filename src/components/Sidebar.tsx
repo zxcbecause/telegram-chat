@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import type { ConnectionState } from '../hooks/useNotifications';
 import type { ThemePref } from '../hooks/useTheme';
+import { messagePreview } from '../lib/attachment';
 import { listLabel } from '../lib/date';
 import { maskPhoneInput } from '../lib/phone';
 import type { Chat } from '../state/chatReducer';
@@ -14,6 +15,8 @@ interface Props {
   activeChatId: string | null;
   connection: ConnectionState;
   demo?: boolean;
+  /** Slot for the instance-settings warning (rendered under the header). */
+  settingsBanner?: ReactNode;
   theme: ThemePref;
   onToggleTheme: () => void;
   onLogout: () => void;
@@ -67,6 +70,8 @@ export function Sidebar(props: Props) {
         </p>
       )}
 
+      {props.settingsBanner}
+
       <NewChatForm onCreate={props.onCreate} />
 
       <ul className="chat-list">
@@ -100,7 +105,7 @@ function ChatListItem({ chat, active, onSelect }: { chat: Chat; active: boolean;
   const last = chat.messages[chat.messages.length - 1];
   const preview = chat.draft
     ? { draft: true, text: chat.draft }
-    : { draft: false, text: last ? (last.text ?? 'Вложение') : 'Нет сообщений' };
+    : { draft: false, text: last ? messagePreview(last) : 'Нет сообщений' };
 
   return (
     <button className={`chat-item ${active ? 'is-active' : ''}`} onClick={() => onSelect(chat.chatId)}>

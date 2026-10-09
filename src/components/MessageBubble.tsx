@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { memo } from 'react';
+import { attachmentIcon, attachmentLabel, messagePreview } from '../lib/attachment';
 import { timeLabel } from '../lib/date';
 import type { Message } from '../state/chatReducer';
 import { ReplyIcon, RetryIcon, CloseIcon } from './icons';
@@ -29,7 +30,8 @@ export const MessageBubble = memo(function MessageBubble({
 }: Props) {
   const out = message.direction === 'out';
   const failed = message.status === 'failed';
-  const canReply = !message.local && message.text !== null;
+  const canReply = !message.local;
+  const { attachment } = message;
 
   return (
     <motion.div
@@ -47,16 +49,24 @@ export const MessageBubble = memo(function MessageBubble({
               {quoted ? (quoted.direction === 'out' ? 'Вы' : chatTitle) : 'Ответ'}
             </span>
             <span className="bubble__quote-text">
-              {quoted ? (quoted.text ?? 'Вложение') : (message.quotedText ?? 'Сообщение не загружено')}
+              {quoted ? messagePreview(quoted) : (message.quotedText ?? 'Сообщение не загружено')}
             </span>
           </button>
         )}
 
-        {message.text !== null ? (
-          <span className="bubble__text">{message.text}</span>
-        ) : (
-          <span className="bubble__text bubble__text--muted">Вложение — в этом клиенте доступен только текст</span>
+        {attachment && (
+          <span
+            className={`attachment attachment--${attachment.kind}`}
+            title="Файлы и медиа открываются в приложении Telegram — этот клиент работает только с текстом"
+          >
+            <span className="attachment__icon" aria-hidden>
+              {attachmentIcon(attachment)}
+            </span>
+            <span className="attachment__name">{attachmentLabel(attachment)}</span>
+          </span>
         )}
+
+        {message.text !== null && <span className="bubble__text">{message.text}</span>}
 
         <span className="bubble__meta">
           <time dateTime={new Date(message.timestamp).toISOString()}>{timeLabel(message.timestamp)}</time>

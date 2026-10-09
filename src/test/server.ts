@@ -14,6 +14,13 @@ export const fake = {
   sent: [] as Array<{ chatId: string; message: string; quotedMessageId?: string }>,
   state: 'authorized',
   nextReceipt: 1,
+  settings: {
+    webhookUrl: '',
+    incomingWebhook: 'yes',
+    outgoingWebhook: 'yes',
+    outgoingMessageWebhook: 'yes',
+    outgoingAPIMessageWebhook: 'yes',
+  } as Record<string, string>,
   push(body: Webhook) {
     this.queue.push({ receiptId: this.nextReceipt++, body });
   },
@@ -23,6 +30,13 @@ export const fake = {
     this.sent = [];
     this.state = 'authorized';
     this.nextReceipt = 1;
+    this.settings = {
+      webhookUrl: '',
+      incomingWebhook: 'yes',
+      outgoingWebhook: 'yes',
+      outgoingMessageWebhook: 'yes',
+      outgoingAPIMessageWebhook: 'yes',
+    };
   },
 };
 
@@ -41,6 +55,11 @@ export const handlers = [
     }
     if (String(phoneNumber) === '77000000000') return HttpResponse.json({ exist: false, chatId: '' });
     return HttpResponse.json({ exist: true, chatId: `chat-${phoneNumber}`, phoneNumber });
+  }),
+  http.get(`${base}/getSettings/:token`, () => HttpResponse.json(fake.settings)),
+  http.post(`${base}/setSettings/:token`, async ({ request }) => {
+    Object.assign(fake.settings, (await request.json()) as Record<string, string>);
+    return HttpResponse.json({ saveSettings: true });
   }),
   http.post(`${base}/getChatHistory/:token`, () => HttpResponse.json([])),
   http.post(`${base}/sendMessage/:token`, async ({ request }) => {

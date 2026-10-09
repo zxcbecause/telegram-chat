@@ -6,6 +6,7 @@ import type {
   SendMessageRequest,
   SendMessageResponse,
   StateInstanceResponse,
+  InstanceSettings,
 } from './types';
 
 /** Error with an HTTP status attached, so the UI can show a precise message. */
@@ -95,6 +96,15 @@ export class GreenApiClient {
     return res;
   }
 
+  getSettings(signal?: AbortSignal) {
+    return this.request<InstanceSettings>('GET', 'getSettings', { signal });
+  }
+
+  /** Changes instance settings. GREEN-API restarts the instance; takes effect within ~5 minutes. */
+  setSettings(settings: InstanceSettings, signal?: AbortSignal) {
+    return this.request<{ saveSettings: boolean }>('POST', 'setSettings', { body: settings, signal });
+  }
+
   getChatHistory(chatId: string, count = 50, signal?: AbortSignal) {
     return this.request<HistoryItem[]>('POST', 'getChatHistory', { body: { chatId, count }, signal });
   }
@@ -128,7 +138,34 @@ export type ApiClient = Pick<
   | 'getChatHistory'
   | 'receiveNotification'
   | 'deleteNotification'
+  | 'getSettings'
+  | 'setSettings'
 >;
+
+/** What the chat needs to receive messages live through the HTTP API. */
+export const REQUIRED_SETTINGS = {
+  webhookUrl: '',
+  incomingWebhook: 'yes',
+  outgoingWebhook: 'yes',
+  outgoingMessageWebhook: 'yes',
+  outgoingAPIMessageWebhook: 'yes',
+} as const satisfies InstanceSettings;
+
+const SETTING_NAMES: Record<keyof typeof REQUIRED_SETTINGS, string> = {
+  webhookUrl: 'задан Webhook URL — HTTP API не отдаёт уведомления',
+  incomingWebhook: 'выключены уведомления о входящих сообщениях',
+  outgoingWebhook: 'выключены статусы отправленных сообщений',
+  outgoingMessageWebhook: 'выключены уведомления о сообщениях, отправленных с телефона',
+  outgoingAPIMessageWebhook: 'выключены уведомления о сообщениях, отправленных через API',
+};
+
+/** Human-readable list of settings that stop messages from arriving live. */
+export function settingsProblems(s: InstanceSettings | null | undefined): string[] {
+  if (!s) return [];
+  return (Object.keys(REQUIRED_SETTINGS) as Array<keyof typeof REQUIRED_SETTINGS>)
+    .filter((key) => (key === 'webhookUrl' ? !!s.webhookUrl : s[key] !== 'yes'))
+    .map((key) => SETTING_NAMES[key]);
+}
 
 async function safeText(res: Response): Promise<string> {
   try {

@@ -15,15 +15,34 @@ interface Props {
   onBack: () => void;
 }
 
+const HISTORY_REFRESH_MS = 20_000;
+
 export function ChatView({ chat, api, instanceState, onBack }: Props) {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const { loadHistory, sendMessage, setDraft, retryMessage, discardMessage } = api;
+  const { loadHistory, refreshHistory, sendMessage, setDraft, retryMessage, discardMessage } = api;
   const authorized = instanceState === 'authorized';
 
   // Load history the first time a chat is opened (retry is manual after an error).
   useEffect(() => {
     if (chat.history === 'idle') void loadHistory(chat.chatId);
   }, [chat.chatId, chat.history, loadHistory]);
+
+  // While the chat is open, re-sync it every 20 s and whenever the tab gets focus.
+  const loaded = chat.history === 'loaded';
+  useEffect(() => {
+    if (!loaded) return;
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void refreshHistory(chat.chatId);
+    };
+    const timer = setInterval(refresh, HISTORY_REFRESH_MS);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [loaded, chat.chatId, refreshHistory]);
 
   useEffect(() => setReplyTo(null), [chat.chatId]);
 

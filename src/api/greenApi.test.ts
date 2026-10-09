@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { API, fake, ID, server, TOKEN } from '../test/server';
-import { GreenApiClient, GreenApiError, guessApiUrl } from './greenApi';
-import { extractText, messageFromHistory, messageFromWebhook } from './mappers';
+import { GreenApiClient, GreenApiError, guessApiUrl, settingsProblems } from './greenApi';
+import { extractText, isPersonalChat, messageFromHistory, messageFromWebhook } from './mappers';
 
 const client = new GreenApiClient({ apiUrl: `${API}/`, idInstance: ID, apiTokenInstance: TOKEN });
 
@@ -116,5 +116,78 @@ describe('findText (replies in different shapes)', () => {
       messageFromHistory({ type: 'incoming', idMessage: 'i', timestamp: 1, chatId: 'c', typeMessage: 'imageMessage' })
         .text,
     ).toBeNull();
+  });
+});
+
+describe('attachments', () => {
+  const base = { type: 'incoming' as const, idMessage: 'x', timestamp: 1, chatId: 'c' };
+
+  it('shows documents by file name and keeps the caption as text', () => {
+    expect(
+      messageFromHistory({ ...base, typeMessage: 'documentMessage', fileName: 'lepro_цены.xlsx', caption: '' }),
+    ).toMatchObject({ text: null, attachment: { kind: 'document', name: 'lepro_цены.xlsx' } });
+
+    expect(
+      messageFromHistory({
+        ...base,
+        typeMessage: 'imageMessage',
+        fileName: '1769056990.jpg',
+        caption: 'почему остаток не грузится?',
+      }),
+    ).toMatchObject({ text: 'почему остаток не грузится?', attachment: { kind: 'photo' } });
+  });
+
+  it('reads file details from webhooks (fileMessageData)', () => {
+    const m = messageFromWebhook({
+      typeWebhook: 'incomingMessageReceived',
+      timestamp: 1,
+      idMessage: 'w',
+      senderData: { chatId: 'c' },
+      messageData: { typeMessage: 'imageMessage', fileMessageData: { caption: 'смотри', fileName: 'a.jpg' } },
+    });
+    expect(m).toMatchObject({ text: 'смотри', attachment: { kind: 'photo' } });
+  });
+
+  it('labels unknown types instead of hiding them', () => {
+    expect(messageFromHistory({ ...base, typeMessage: 'callMessage' })).toMatchObject({
+      text: null,
+      attachment: { kind: 'other', name: 'callMessage' },
+    });
+  });
+});
+
+describe('settingsProblems', () => {
+  it('lists what stops live notifications', () => {
+    expect(
+      settingsProblems({
+        webhookUrl: 'https://x',
+        incomingWebhook: 'no',
+        outgoingWebhook: 'yes',
+        outgoingMessageWebhook: 'yes',
+        outgoingAPIMessageWebhook: 'yes',
+      }),
+    ).toEqual([
+      'задан Webhook URL — HTTP API не отдаёт уведомления',
+      'выключены уведомления о входящих сообщениях',
+    ]);
+    expect(settingsProblems(fake.settings)).toEqual([]);
+  });
+});
+
+describe('isPersonalChat', () => {
+  const w = (senderData: { chatId: string; chatType?: string }) =>
+    ({
+      typeWebhook: 'incomingMessageReceived',
+      timestamp: 1,
+      idMessage: 'x',
+      senderData,
+      messageData: { typeMessage: 'textMessage' },
+    }) as const;
+
+  it('keeps people and bots, skips groups and channels', () => {
+    expect(isPersonalChat(w({ chatId: '10000000', chatType: 'user' }))).toBe(true);
+    expect(isPersonalChat(w({ chatId: '20000000', chatType: 'bot' }))).toBe(true);
+    expect(isPersonalChat(w({ chatId: '-1001', chatType: 'supergroup' }))).toBe(false);
+    expect(isPersonalChat(w({ chatId: '-1001' }))).toBe(false);
   });
 });

@@ -635,6 +635,61 @@ a:hover {
   background: var(--accent-soft);
 }
 
+.settings-banner {
+  position: relative;
+  margin: 0 12px 8px;
+  border-radius: 12px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  overflow: hidden;
+}
+
+.settings-banner.is-saved {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--text);
+}
+
+.settings-banner__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 36px 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.settings-banner__body strong {
+  font-size: 13.5px;
+}
+
+.settings-banner__error {
+  color: var(--danger);
+}
+
+.settings-banner__btn {
+  margin-top: 4px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--accent-grad);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.settings-banner__btn:disabled {
+  opacity: 0.6;
+}
+
+.settings-banner__close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 30px;
+  height: 30px;
+  color: inherit;
+}
+
 .sidebar__actions {
   display: flex;
   gap: 2px;
@@ -1068,9 +1123,44 @@ a:hover {
   white-space: pre-wrap;
 }
 
-.bubble__text--muted {
-  font-style: italic;
-  opacity: 0.7;
+.attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 1px 0 4px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  font-size: 14px;
+  cursor: default;
+}
+
+.attachment__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  font-size: 17px;
+}
+
+.msg--out .attachment__icon {
+  background: color-mix(in srgb, var(--bubble-meta-out) 22%, transparent);
+}
+
+.attachment__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+/* A bubble with only an attachment: keep the time on the same line. */
+.attachment + .bubble__meta {
+  margin-top: -2px;
 }
 
 /* Time floats bottom-right inside the bubble, like in Telegram. */

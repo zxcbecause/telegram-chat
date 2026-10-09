@@ -5,14 +5,33 @@ import { formatPhone } from '../lib/phone';
  * parts (dedupe, out-of-order webhooks, status ordering) easy to unit test.
  */
 
+export type AttachmentKind =
+  | 'photo'
+  | 'video'
+  | 'document'
+  | 'audio'
+  | 'sticker'
+  | 'poll'
+  | 'location'
+  | 'contact'
+  | 'other';
+
+/** A non-text part of a message. The client can't open files, but says what was sent. */
+export interface Attachment {
+  kind: AttachmentKind;
+  /** File name, poll question, or the raw typeMessage for unknown kinds. */
+  name?: string;
+}
+
 export type MessageStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
 
 export interface Message {
   /** idMessage from GREEN-API, or a local id while the send is in flight. */
   id: string;
   chatId: string;
-  /** null = a non-text message (only text is supported by this client). */
+  /** Message text, or the caption of a file; null when there is no text at all. */
   text: string | null;
+  attachment?: Attachment;
   timestamp: number; // ms
   direction: 'in' | 'out';
   status?: MessageStatus;
