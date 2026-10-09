@@ -41,6 +41,9 @@ export interface Message {
   quotedText?: string;
   /** true while `id` is still the local placeholder. */
   local?: boolean;
+  /** A delete request is in flight. */
+  deleting?: boolean;
+  deleteError?: string;
 }
 
 export interface Chat {
@@ -53,6 +56,8 @@ export interface Chat {
   unread: number;
   updatedAt: number;
   history: 'idle' | 'loading' | 'loaded' | 'error';
+  /** Messages the user deleted — kept out even if history or a late webhook brings them back. */
+  deletedIds?: string[];
 }
 
 export interface ChatState {
@@ -78,6 +83,9 @@ export type ChatAction =
   | { type: 'send/retry'; chatId: string; localId: string }
   | { type: 'send/discard'; chatId: string; localId: string }
   | { type: 'message/received'; message: Message; title?: string }
+  | { type: 'message/deleting'; chatId: string; id: string }
+  | { type: 'message/deleted'; chatId: string; id: string }
+  | { type: 'message/deleteFailed'; chatId: string; id: string; error: string }
   | { type: 'message/status'; chatId: string; idMessage: string; status: MessageStatus; error?: string };
 
 const RANK: Record<MessageStatus, number> = { pending: 0, sent: 1, delivered: 2, read: 3, failed: 4 };
@@ -153,11 +161,17 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case 'history/loaded':
       return updateChat(state, action.chatId, (c) => {
-        // Merge: keep anything we already have (pending sends, fresher statuses).
+        // Merge: keep anything we already have (pending sends, fresher statuses),
+        // but the server's timestamp wins — see `serverTime` in useChat.
+        const deleted = new Set(c.deletedIds);
         const byId = new Map(c.messages.map((m) => [m.id, m]));
         for (const m of action.messages) {
+          if (deleted.has(m.id)) continue;
           const prev = byId.get(m.id);
-          byId.set(m.id, prev ? { ...m, ...prev, status: mergeStatus(m.status, prev.status) } : m);
+          byId.set(
+            m.id,
+            prev ? { ...m, ...prev, timestamp: m.timestamp, status: mergeStatus(m.status, prev.status) } : m,
+          );
         }
         const messages = sortByTime([...byId.values()]);
         const last = messages[messages.length - 1];
@@ -170,7 +184,11 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       });
 
     case 'send/start': {
-      const now = action.now ?? Date.now();
+      // A message we just sent is the newest one by definition — never let a clock
+      // difference put it above what is already on screen.
+      const msgs = state.chats[action.chatId]?.messages ?? [];
+      const last = msgs[msgs.length - 1];
+      const now = Math.max(action.now ?? Date.now(), last?.timestamp ?? 0);
       const message: Message = {
         id: action.localId,
         chatId: action.chatId,
@@ -206,11 +224,13 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
                   id: action.idMessage,
                   local: false,
                   error: undefined,
+                  // The echo carries the server's time; prefer it over our local estimate.
+                  timestamp: echo?.timestamp ?? m.timestamp,
                   status: mergeStatus(mergeStatus('sent', echo?.status), orphan),
                 }
               : m,
           );
-        return { ...c, messages };
+        return { ...c, messages: echo ? sortByTime(messages) : messages };
       });
       return next;
     }
@@ -245,6 +265,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           };
 
       return updateChat(base, message.chatId, (c) => {
+        if (c.deletedIds?.includes(message.id)) return c;
         const dup = c.messages.find((m) => m.id === message.id);
         const isActive = base.activeChatId === message.chatId;
         // Replace a placeholder title (raw id, phone, @username) with the real name from Telegram.
@@ -254,10 +275,13 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           (c.phone !== undefined && c.title === formatPhone(c.phone));
         const title = placeholder && action.title ? action.title : c.title;
         if (dup) {
-          return {
-            ...patchMessage(c, message.id, (m) => ({ ...m, status: mergeStatus(m.status, message.status) })),
-            title,
-          };
+          // Our own send echoed back: take the server time and put it where it belongs.
+          const patched = patchMessage(c, message.id, (m) => ({
+            ...m,
+            timestamp: message.timestamp,
+            status: mergeStatus(m.status, message.status),
+          }));
+          return { ...patched, messages: sortByTime(patched.messages), title };
         }
         return {
           ...c,
@@ -268,6 +292,23 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         };
       });
     }
+
+    case 'message/deleting':
+      return updateChat(state, action.chatId, (c) =>
+        patchMessage(c, action.id, (m) => ({ ...m, deleting: true, deleteError: undefined })),
+      );
+
+    case 'message/deleteFailed':
+      return updateChat(state, action.chatId, (c) =>
+        patchMessage(c, action.id, (m) => ({ ...m, deleting: false, deleteError: action.error })),
+      );
+
+    case 'message/deleted':
+      return updateChat(state, action.chatId, (c) => ({
+        ...c,
+        messages: c.messages.filter((m) => m.id !== action.id),
+        deletedIds: [...(c.deletedIds ?? []), action.id].slice(-200),
+      }));
 
     case 'message/status': {
       const chat = state.chats[action.chatId];

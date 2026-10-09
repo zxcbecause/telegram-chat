@@ -1220,40 +1220,137 @@ a:hover {
   opacity: 0.85;
 }
 
-.msg__reply {
+/* Hover actions next to a bubble: reply, delete. */
+.msg__actions {
   position: absolute;
   top: 50%;
-  width: 32px;
-  height: 32px;
-  margin-top: -16px;
+  display: flex;
+  gap: 4px;
   opacity: 0;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  transform: translateY(-50%);
   transition:
     opacity 0.15s,
     transform 0.15s var(--ease);
 }
 
-.msg--in .msg__reply {
-  right: -40px;
-  transform: translateX(-6px);
+.msg__actions .icon-btn {
+  width: 32px;
+  height: 32px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
-.msg--out .msg__reply {
-  left: -40px;
-  transform: translateX(6px);
+.msg__actions .icon-btn:hover {
+  color: var(--accent);
 }
 
-.msg:hover .msg__reply,
-.msg__reply:focus-visible {
+.msg--in .msg__actions {
+  left: calc(100% + 8px);
+}
+
+.msg--out .msg__actions {
+  right: calc(100% + 8px);
+  flex-direction: row-reverse;
+}
+
+.msg:hover .msg__actions,
+.msg__actions:focus-within {
   opacity: 1;
-  transform: none;
+  pointer-events: auto;
 }
 
 @media (hover: none) {
-  .msg__reply {
+  .msg__actions {
     display: none;
   }
+}
+
+.bubble--deleting {
+  opacity: 0.45;
+  transition: opacity 0.2s;
+}
+
+.msg__note {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.msg__note--error {
+  color: var(--danger);
+}
+
+/* Popover menu (message actions, chat removal) */
+.menu {
+  position: absolute;
+  z-index: 20;
+  min-width: 200px;
+  max-width: 280px;
+  padding: 6px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  transform-origin: top right;
+}
+
+.menu__title {
+  padding: 6px 10px 8px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--text-2);
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  text-align: left;
+  color: var(--text);
+  transition: background-color 0.12s;
+}
+
+.menu__item:hover,
+.menu__item:focus-visible {
+  background: var(--surface-hover);
+  outline: none;
+}
+
+.menu__item--danger {
+  color: var(--danger);
+}
+
+.msg__menu {
+  top: calc(100% + 4px);
+}
+
+.msg__menu--up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.msg--out .msg__menu {
+  right: 0;
+}
+
+.msg--in .msg__menu {
+  left: 0;
+  transform-origin: top left;
+}
+
+.chat__actions {
+  position: relative;
+  margin-left: auto;
+}
+
+.chat__menu {
+  top: calc(100% + 6px);
+  right: 0;
 }
 
 .msg--flash .bubble {

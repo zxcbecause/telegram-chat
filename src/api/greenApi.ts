@@ -96,6 +96,17 @@ export class GreenApiClient {
     return res;
   }
 
+  /**
+   * Deletes one of our own messages. Telegram via GREEN-API can't delete other
+   * people's messages. `onlySenderDelete: true` removes it only on our side.
+   */
+  async deleteMessage(
+    payload: { chatId: string; idMessage: string; onlySenderDelete?: boolean },
+    signal?: AbortSignal,
+  ): Promise<void> {
+    await this.request<unknown>('POST', 'deleteMessage', { body: payload, signal });
+  }
+
   getSettings(signal?: AbortSignal) {
     return this.request<InstanceSettings>('GET', 'getSettings', { signal });
   }
@@ -140,6 +151,7 @@ export type ApiClient = Pick<
   | 'deleteNotification'
   | 'getSettings'
   | 'setSettings'
+  | 'deleteMessage'
 >;
 
 /** What the chat needs to receive messages live through the HTTP API. */
@@ -187,6 +199,8 @@ function translateReason(reason?: string): string {
 function describeHttpError(status: number, body: string): string {
   switch (status) {
     case 400:
+      if (body.includes('not found')) return 'Сообщение не найдено — возможно, оно уже удалено';
+      if (body.includes('not supported')) return 'Такой тип сообщения нельзя удалить';
       return body.includes('webhook')
         ? 'В настройках инстанса задан Webhook URL — очистите его, чтобы получать сообщения'
         : `Некорректный запрос${body ? `: ${body.slice(0, 120)}` : ''}`;

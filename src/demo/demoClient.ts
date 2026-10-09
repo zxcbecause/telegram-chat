@@ -186,6 +186,12 @@ export class DemoClient implements ApiClient {
     return chat;
   }
 
+  async deleteMessage({ chatId, idMessage }: { chatId: string; idMessage: string }) {
+    await delay(300);
+    const chat = this.chats.get(chatId);
+    if (chat) chat.history = chat.history.filter((h) => h.idMessage !== idMessage);
+  }
+
   async getSettings() {
     return {
       webhookUrl: '',

@@ -12,6 +12,7 @@ export const fake = {
   queue: [] as Array<{ receiptId: number; body: Webhook }>,
   deleted: [] as number[],
   sent: [] as Array<{ chatId: string; message: string; quotedMessageId?: string }>,
+  deletedMessages: [] as Array<{ chatId: string; idMessage: string; onlySenderDelete?: boolean }>,
   state: 'authorized',
   nextReceipt: 1,
   settings: {
@@ -28,6 +29,7 @@ export const fake = {
     this.queue = [];
     this.deleted = [];
     this.sent = [];
+    this.deletedMessages = [];
     this.state = 'authorized';
     this.nextReceipt = 1;
     this.settings = {
@@ -55,6 +57,10 @@ export const handlers = [
     }
     if (String(phoneNumber) === '77000000000') return HttpResponse.json({ exist: false, chatId: '' });
     return HttpResponse.json({ exist: true, chatId: `chat-${phoneNumber}`, phoneNumber });
+  }),
+  http.post(`${base}/deleteMessage/:token`, async ({ request }) => {
+    fake.deletedMessages.push((await request.json()) as (typeof fake.deletedMessages)[number]);
+    return new HttpResponse(null, { status: 200 });
   }),
   http.get(`${base}/getSettings/:token`, () => HttpResponse.json(fake.settings)),
   http.post(`${base}/setSettings/:token`, async ({ request }) => {

@@ -1,9 +1,10 @@
-import { motion } from 'framer-motion';
-import { memo } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { memo, useCallback, useRef, useState, type MouseEvent } from 'react';
 import { attachmentIcon, attachmentLabel, messagePreview } from '../lib/attachment';
 import { timeLabel } from '../lib/date';
 import type { Message } from '../state/chatReducer';
-import { ReplyIcon, RetryIcon, CloseIcon } from './icons';
+import { ActionMenu, type MenuItem } from './ActionMenu';
+import { ReplyIcon, RetryIcon, CloseIcon, TrashIcon } from './icons';
 import { StatusMark } from './StatusMark';
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
   onRetry: (id: string) => void;
   onDiscard: (id: string) => void;
   onJumpTo: (id: string) => void;
+  onDelete: (id: string, forEveryone: boolean) => void;
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -27,22 +29,58 @@ export const MessageBubble = memo(function MessageBubble({
   onRetry,
   onDiscard,
   onJumpTo,
+  onDelete,
 }: Props) {
+  const [menu, setMenu] = useState<null | 'all' | 'delete'>(null);
+  const [menuUp, setMenuUp] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
+  // Near the bottom of the screen the menu opens upwards so it isn't cut off.
+  const openMenu = (kind: 'all' | 'delete') => {
+    const rect = ref.current?.getBoundingClientRect();
+    setMenuUp(!!rect && rect.bottom > window.innerHeight * 0.55);
+    setMenu(kind);
+  };
   const out = message.direction === 'out';
   const failed = message.status === 'failed';
-  const canReply = !message.local;
+  const canReply = !message.local && !message.deleting;
+  // GREEN-API can only delete our own messages.
+  const canDelete = out && !message.local && !message.deleting;
+
+  const deleteItems: MenuItem[] = [
+    { label: 'Удалить у всех', icon: <TrashIcon width={16} height={16} />, danger: true, onSelect: () => onDelete(message.id, true) },
+    { label: 'Удалить только у меня', icon: <TrashIcon width={16} height={16} />, onSelect: () => onDelete(message.id, false) },
+  ];
+  const menuItems: MenuItem[] =
+    menu === 'delete'
+      ? deleteItems
+      : [
+          ...(canReply
+            ? [{ label: 'Ответить', icon: <ReplyIcon width={16} height={16} />, onSelect: () => onReply(message) }]
+            : []),
+          ...(canDelete ? deleteItems : []),
+        ];
+
+  // Right click on desktop, long press on phones.
+  const onContextMenu = (e: MouseEvent) => {
+    if (!canReply && !canDelete) return;
+    e.preventDefault();
+    openMenu('all');
+  };
   const { attachment } = message;
 
   return (
     <motion.div
+      ref={ref}
       id={`msg-${message.id}`}
       className={`msg ${out ? 'msg--out' : 'msg--in'} ${tail ? 'msg--tail' : ''}`}
       initial={{ opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 520, damping: 34, mass: 0.7 }}
       onDoubleClick={() => canReply && onReply(message)}
+      onContextMenu={onContextMenu}
     >
-      <div className={`bubble ${failed ? 'bubble--failed' : ''}`}>
+      <div className={`bubble ${failed ? 'bubble--failed' : ''} ${message.deleting ? 'bubble--deleting' : ''}`}>
         {message.quotedId && (
           <button className="bubble__quote" onClick={() => onJumpTo(message.quotedId!)} type="button">
             <span className="bubble__quote-author">
@@ -74,11 +112,39 @@ export const MessageBubble = memo(function MessageBubble({
         </span>
       </div>
 
-      {canReply && (
-        <button className="msg__reply icon-btn" onClick={() => onReply(message)} aria-label="Ответить" title="Ответить">
-          <ReplyIcon width={18} height={18} />
-        </button>
+      {(canReply || canDelete) && (
+        <div className="msg__actions">
+          {canReply && (
+            <button className="icon-btn" onClick={() => onReply(message)} aria-label="Ответить" title="Ответить">
+              <ReplyIcon width={18} height={18} />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              className="icon-btn"
+              onClick={() => openMenu('delete')}
+              aria-label="Удалить сообщение"
+              title="Удалить"
+              aria-haspopup="menu"
+            >
+              <TrashIcon width={17} height={17} />
+            </button>
+          )}
+        </div>
       )}
+
+      <AnimatePresence>
+        {menu && menuItems.length > 0 && (
+          <ActionMenu
+            className={`msg__menu ${menuUp ? 'msg__menu--up' : ''}`}
+            title={menu === 'delete' ? 'Удалить сообщение?' : undefined}
+            items={menuItems}
+            onClose={closeMenu}
+          />
+        )}
+      </AnimatePresence>
+
+      {message.deleteError && <div className="msg__note msg__note--error">{message.deleteError}</div>}
 
       {failed && (
         <motion.div className="msg__failed" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

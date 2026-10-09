@@ -17,6 +17,7 @@ import { chatReducer, initialState, selectChatList, type Chat, type ChatState } 
 import { useNotifications } from './useNotifications';
 
 const MESSAGES_KEPT_PER_CHAT = 100;
+const CLOCK_SKEW_LIMIT_MS = 15 * 60 * 1000;
 
 let localSeq = 0;
 const newLocalId = () => `local-${Date.now()}-${++localSeq}`;
@@ -57,7 +58,25 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
     if (!persist) remove(keys.chats(idInstance));
   }, [persist, idInstance]);
 
+  /**
+   * Our estimate of (server clock − this computer's clock), in ms.
+   * Messages from the server carry server time; a message we just sent only has
+   * our clock. If the two differ by a couple of minutes, a fresh message sorts
+   * above older ones and seems to vanish until a reload. So local sends use
+   * the server clock estimate, and the echo from the server fixes the rest.
+   */
+  const clockSkew = useRef<number | null>(null);
+  const observeServerTime = useCallback((tsSec: number) => {
+    const estimate = tsSec * 1000 - Date.now();
+    // Old notifications from the queue (up to 24 h) say nothing about the clock.
+    if (Math.abs(estimate) > CLOCK_SKEW_LIMIT_MS) return;
+    // Delivery delay only makes the estimate smaller, so the largest one is the best.
+    clockSkew.current = clockSkew.current === null ? estimate : Math.max(clockSkew.current, estimate);
+  }, []);
+  const serverNow = useCallback(() => Date.now() + (clockSkew.current ?? 0), []);
+
   const handleWebhook = useCallback((w: Webhook) => {
+    if (typeof w.timestamp === 'number') observeServerTime(w.timestamp);
     switch (w.typeWebhook) {
       case 'incomingMessageReceived':
       case 'outgoingMessageReceived':
@@ -87,7 +106,7 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
         // Other notification types are acknowledged and ignored.
         return;
     }
-  }, []);
+  }, [observeServerTime]);
 
   const connection = useNotifications(client, handleWebhook);
 
@@ -212,10 +231,10 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
       const trimmed = text.trim();
       if (!trimmed) return;
       const localId = newLocalId();
-      dispatch({ type: 'send/start', chatId, localId, text: trimmed, quotedId });
+      dispatch({ type: 'send/start', chatId, localId, text: trimmed, quotedId, now: serverNow() });
       void deliver(chatId, localId, trimmed, quotedId);
     },
-    [deliver],
+    [deliver, serverNow],
   );
 
   const retryMessage = useCallback(
@@ -226,6 +245,31 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
       void deliver(chatId, localId, msg.text, msg.quotedId);
     },
     [deliver],
+  );
+
+  /** Own messages: for everyone or only for me. Local (unsent) ones are just dropped. */
+  const deleteMessage = useCallback(
+    async (chatId: string, id: string, forEveryone: boolean) => {
+      const msg = stateRef.current.chats[chatId]?.messages.find((m) => m.id === id);
+      if (!msg || msg.deleting) return;
+      if (msg.local) {
+        dispatch({ type: 'send/discard', chatId, localId: id });
+        return;
+      }
+      dispatch({ type: 'message/deleting', chatId, id });
+      try {
+        await client.deleteMessage({ chatId, idMessage: id, onlySenderDelete: !forEveryone });
+        dispatch({ type: 'message/deleted', chatId, id });
+      } catch (err) {
+        dispatch({
+          type: 'message/deleteFailed',
+          chatId,
+          id,
+          error: err instanceof Error ? err.message : 'Не удалось удалить',
+        });
+      }
+    },
+    [client],
   );
 
   const actions = useMemo(
@@ -239,8 +283,9 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
       retryMessage,
       loadHistory,
       refreshHistory,
+      deleteMessage,
     }),
-    [openChat, sendMessage, retryMessage, loadHistory, refreshHistory],
+    [openChat, sendMessage, retryMessage, loadHistory, refreshHistory, deleteMessage],
   );
 
   return {

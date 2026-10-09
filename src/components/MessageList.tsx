@@ -10,12 +10,13 @@ interface Props {
   onReply: (m: Message) => void;
   onRetry: (id: string) => void;
   onDiscard: (id: string) => void;
+  onDelete: (id: string, forEveryone: boolean) => void;
   onReloadHistory: () => void;
 }
 
 const NEAR_BOTTOM_PX = 120;
 
-export function MessageList({ chat, onReply, onRetry, onDiscard, onReloadHistory }: Props) {
+export function MessageList({ chat, onReply, onRetry, onDiscard, onDelete, onReloadHistory }: Props) {
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const [showJump, setShowJump] = useState(false);
@@ -121,6 +122,7 @@ export function MessageList({ chat, onReply, onRetry, onDiscard, onReloadHistory
                 onRetry={onRetry}
                 onDiscard={onDiscard}
                 onJumpTo={jumpTo}
+                onDelete={onDelete}
               />
             </Fragment>
           );

@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'framer-motion';
 import { useCallback, useEffect, useState } from 'react';
 import type { InstanceState } from '../api/types';
 import type { ChatApi } from '../hooks/useChat';
@@ -5,7 +6,8 @@ import { formatPhone } from '../lib/phone';
 import type { Chat, Message } from '../state/chatReducer';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
-import { BackIcon } from './icons';
+import { ActionMenu } from './ActionMenu';
+import { BackIcon, TrashIcon } from './icons';
 import { MessageList } from './MessageList';
 
 interface Props {
@@ -19,7 +21,10 @@ const HISTORY_REFRESH_MS = 20_000;
 
 export function ChatView({ chat, api, instanceState, onBack }: Props) {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const { loadHistory, refreshHistory, sendMessage, setDraft, retryMessage, discardMessage } = api;
+  const { loadHistory, refreshHistory, sendMessage, setDraft, retryMessage, discardMessage, deleteMessage, removeChat } =
+    api;
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const closeConfirm = useCallback(() => setConfirmRemove(false), []);
   const authorized = instanceState === 'authorized';
 
   // Load history the first time a chat is opened (retry is manual after an error).
@@ -54,6 +59,10 @@ export function ChatView({ chat, api, instanceState, onBack }: Props) {
   // Stable callbacks keep memoised bubbles from re-rendering on every keystroke.
   const onRetry = useCallback((id: string) => retryMessage(chat.chatId, id), [retryMessage, chat.chatId]);
   const onDiscard = useCallback((id: string) => discardMessage(chat.chatId, id), [discardMessage, chat.chatId]);
+  const onDelete = useCallback(
+    (id: string, forEveryone: boolean) => void deleteMessage(chat.chatId, id, forEveryone),
+    [deleteMessage, chat.chatId],
+  );
   const onReload = useCallback(() => void loadHistory(chat.chatId), [loadHistory, chat.chatId]);
 
   const subtitle =
@@ -72,6 +81,35 @@ export function ChatView({ chat, api, instanceState, onBack }: Props) {
           <h2 className="chat__title">{chat.title}</h2>
           <span className="chat__subtitle">{subtitle}</span>
         </div>
+        <div className="chat__actions">
+          <button
+            className="icon-btn"
+            onClick={() => setConfirmRemove(true)}
+            aria-label="Удалить чат"
+            title="Удалить чат"
+            aria-haspopup="menu"
+          >
+            <TrashIcon width={20} height={20} />
+          </button>
+          <AnimatePresence>
+            {confirmRemove && (
+              <ActionMenu
+                className="chat__menu"
+                title="Убрать чат из списка? Переписка в Telegram останется, а новые сообщения вернут чат."
+                items={[
+                  {
+                    label: 'Удалить чат',
+                    icon: <TrashIcon width={16} height={16} />,
+                    danger: true,
+                    onSelect: () => removeChat(chat.chatId),
+                  },
+                  { label: 'Отмена', onSelect: () => {} },
+                ]}
+                onClose={closeConfirm}
+              />
+            )}
+          </AnimatePresence>
+        </div>
       </header>
 
       {!authorized && (
@@ -86,6 +124,7 @@ export function ChatView({ chat, api, instanceState, onBack }: Props) {
         onReply={setReplyTo}
         onRetry={onRetry}
         onDiscard={onDiscard}
+        onDelete={onDelete}
         onReloadHistory={onReload}
       />
 

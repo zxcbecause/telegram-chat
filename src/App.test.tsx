@@ -125,4 +125,26 @@ describe('App (end-to-end against a fake GREEN-API)', () => {
     expect(await within(chat).findByText('Файлы надо смотреть?')).toBeInTheDocument();
     expect(within(chat).getByText('отчёт.xlsx')).toBeInTheDocument();
   });
+
+  it('deletes own messages for everyone and removes chats from the list', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await login(user);
+    await user.type(await screen.findByLabelText('Номер телефона или @username получателя'), '77001234567');
+    await user.click(screen.getByRole('button', { name: 'Создать чат' }));
+    const chat = await screen.findByRole('region', { name: /Чат с/ });
+
+    await user.type(within(chat).getByLabelText('Текст сообщения'), 'Опечатка{Enter}');
+    await within(chat).findByRole('img', { name: 'Отправлено' });
+
+    await user.click(within(chat).getByRole('button', { name: 'Удалить сообщение' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Удалить у всех' }));
+    await waitFor(() => expect(within(chat).queryByText('Опечатка')).not.toBeInTheDocument());
+    expect(fake.deletedMessages).toEqual([{ chatId: 'chat-77001234567', idMessage: 'srv-1', onlySenderDelete: false }]);
+
+    await user.click(within(chat).getByRole('button', { name: 'Удалить чат' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Удалить чат' }));
+    const list = screen.getByRole('complementary', { name: 'Чаты' });
+    await waitFor(() => expect(within(list).queryByText('+7 700 123-45-67')).not.toBeInTheDocument());
+  });
 });

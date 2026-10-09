@@ -123,3 +123,84 @@ describe('chat titles', () => {
     expect(s.chats.c1!.title).toBe('Аня');
   });
 });
+
+describe('clock skew', () => {
+  // Server clock is 3 minutes ahead of this computer (or the other way round).
+  it('moves our message to its real place when the server echo brings its time', () => {
+    const s = run([
+      open,
+      {
+        type: 'message/received',
+        message: { id: 'in1', chatId: 'c1', text: 'привет', timestamp: 200_000, direction: 'in' },
+      },
+      // Sent with a local clock that is 3 minutes behind: sorts above "in1".
+      { type: 'send/start', chatId: 'c1', localId: 'l1', text: 'ответ', now: 30_000 },
+      { type: 'send/success', chatId: 'c1', localId: 'l1', idMessage: 'm1' },
+      {
+        type: 'message/received',
+        message: { id: 'm1', chatId: 'c1', text: 'ответ', timestamp: 210_000, direction: 'out', status: 'sent' },
+      },
+    ]);
+    expect(s.chats.c1!.messages.map((m) => m.id)).toEqual(['in1', 'm1']);
+  });
+
+  it('history also corrects the timestamp of messages we already have', () => {
+    const s = run([
+      open,
+      { type: 'send/start', chatId: 'c1', localId: 'l1', text: 'ответ', now: 30_000 },
+      { type: 'send/success', chatId: 'c1', localId: 'l1', idMessage: 'm1' },
+      {
+        type: 'history/loaded',
+        chatId: 'c1',
+        messages: [
+          { id: 'in1', chatId: 'c1', text: 'привет', timestamp: 200_000, direction: 'in' },
+          { id: 'm1', chatId: 'c1', text: 'ответ', timestamp: 210_000, direction: 'out', status: 'read' },
+        ],
+      },
+    ]);
+    expect(s.chats.c1!.messages.map((m) => [m.id, m.timestamp])).toEqual([
+      ['in1', 200_000],
+      ['m1', 210_000],
+    ]);
+  });
+});
+
+describe('deleting messages', () => {
+  it('removes the message and keeps it out of later history and webhooks', () => {
+    const msg = { id: 'm1', chatId: 'c1', text: 'упс', timestamp: 2000, direction: 'out' as const, status: 'sent' as const };
+    let s = run([open, { type: 'message/received', message: msg }, { type: 'message/deleting', chatId: 'c1', id: 'm1' }]);
+    expect(s.chats.c1!.messages[0]!.deleting).toBe(true);
+
+    s = run(
+      [
+        { type: 'message/deleted', chatId: 'c1', id: 'm1' },
+        { type: 'history/loaded', chatId: 'c1', messages: [msg] },
+        { type: 'message/received', message: msg },
+      ],
+      s,
+    );
+    expect(s.chats.c1!.messages).toHaveLength(0);
+  });
+
+  it('shows an error and keeps the message when deletion fails', () => {
+    const msg = { id: 'm1', chatId: 'c1', text: 'упс', timestamp: 2000, direction: 'out' as const };
+    const s = run([
+      open,
+      { type: 'message/received', message: msg },
+      { type: 'message/deleting', chatId: 'c1', id: 'm1' },
+      { type: 'message/deleteFailed', chatId: 'c1', id: 'm1', error: 'Сообщение не найдено' },
+    ]);
+    expect(s.chats.c1!.messages[0]).toMatchObject({ deleting: false, deleteError: 'Сообщение не найдено' });
+  });
+});
+
+describe('send/start ordering', () => {
+  it('never puts a just-sent message above the last one, even with a wrong clock', () => {
+    const s = run([
+      open,
+      { type: 'message/received', message: { id: 'in1', chatId: 'c1', text: 'привет', timestamp: 500_000, direction: 'in' } },
+      { type: 'send/start', chatId: 'c1', localId: 'l1', text: 'ответ', now: 10_000 },
+    ]);
+    expect(s.chats.c1!.messages.map((m) => m.id)).toEqual(['in1', 'l1']);
+  });
+});
