@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { GreenApiClient, GreenApiError, type ApiClient } from '../api/greenApi';
+import { GreenApiClient, GreenApiError, validateApiUrl, type ApiClient } from '../api/greenApi';
 import { DemoClient } from '../demo/demoClient';
 import type { Credentials } from '../api/types';
 import { keys, load, remove, save } from '../lib/storage';
@@ -40,7 +40,10 @@ export function useSession() {
   const [session, setSession] = useState<Session | null>(() => {
     if (wantsDemoFromUrl()) return DEMO_SESSION; // shareable link: https://…/?demo
     const stored = load<StoredSession | null>(keys.session, null);
-    return stored ? { credentials: stored.credentials, remember: true } : null;
+    // Ignore a stored session that is malformed or points outside GREEN-API.
+    if (!stored?.credentials?.idInstance || !stored.credentials.apiTokenInstance) return null;
+    if (validateApiUrl(stored.credentials.apiUrl)) return null;
+    return { credentials: stored.credentials, remember: true };
   });
 
   // A fresh demo client per demo session, so "Выйти → Демо" starts over.
@@ -52,6 +55,8 @@ export function useSession() {
   const startDemo = useCallback(() => setSession({ ...DEMO_SESSION }), []);
 
   const login = useCallback(async (credentials: Credentials, remember: boolean): Promise<LoginResult> => {
+    const urlError = validateApiUrl(credentials.apiUrl);
+    if (urlError) return { ok: false, error: urlError };
     const probe = new GreenApiClient(credentials);
     try {
       const { stateInstance } = await probe.getStateInstance();

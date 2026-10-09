@@ -112,21 +112,25 @@ export function LoginScreen({ onLogin, onDemo }: Props) {
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <label className="field">
-                <span className="field__label">API URL</span>
+              <div className="field">
+                <label className="field__label" htmlFor="api-url">
+                  API URL
+                </label>
                 <input
+                  id="api-url"
                   className="field__input"
                   inputMode="url"
+                  aria-describedby="api-url-hint"
                   value={effectiveApiUrl}
                   onChange={(e) => {
                     setApiUrlEdited(true);
                     setApiUrl(e.target.value);
                   }}
                 />
-                <span className="field__hint">
+                <span className="field__hint" id="api-url-hint">
                   Подставляется по idInstance. Если не подходит — скопируйте apiUrl из личного кабинета.
                 </span>
-              </label>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

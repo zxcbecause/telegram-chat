@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { API, fake, ID, server, TOKEN } from '../test/server';
-import { GreenApiClient, GreenApiError, guessApiUrl, settingsProblems } from './greenApi';
+import { GreenApiClient, GreenApiError, guessApiUrl, settingsProblems, validateApiUrl } from './greenApi';
 import { extractText, isPersonalChat, messageFromHistory, messageFromWebhook } from './mappers';
 
 const client = new GreenApiClient({ apiUrl: `${API}/`, idInstance: ID, apiTokenInstance: TOKEN });
@@ -189,5 +189,86 @@ describe('isPersonalChat', () => {
     expect(isPersonalChat(w({ chatId: '20000000', chatType: 'bot' }))).toBe(true);
     expect(isPersonalChat(w({ chatId: '-1001', chatType: 'supergroup' }))).toBe(false);
     expect(isPersonalChat(w({ chatId: '-1001' }))).toBe(false);
+  });
+});
+
+describe('validateApiUrl (where the token may be sent)', () => {
+  it('accepts GREEN-API hosts over https', () => {
+    expect(validateApiUrl('https://4100.api.green-api.com')).toBeNull();
+    expect(validateApiUrl('https://api.green-api.com/')).toBeNull();
+  });
+
+  it('rejects other sites, plain http and garbage', () => {
+    expect(validateApiUrl('https://evil.example.com')).toMatch(/green-api\.com/);
+    expect(validateApiUrl('https://green-api.com.evil.io')).toMatch(/green-api\.com/);
+    expect(validateApiUrl('https://evilgreen-api.com')).toMatch(/green-api\.com/);
+    expect(validateApiUrl('http://4100.api.green-api.com')).toMatch(/https/);
+    expect(validateApiUrl('javascript:alert(1)')).not.toBeNull();
+    expect(validateApiUrl('не адрес')).not.toBeNull();
+  });
+});
+
+describe('request building and error handling', () => {
+  const base = `${API}/waInstance${ID}`;
+
+  it('encodes the token so it cannot change the request path', async () => {
+    let seen = '';
+    server.use(
+      http.get(`${API}/*`, ({ request }) => {
+        seen = new URL(request.url).pathname;
+        return HttpResponse.json({ stateInstance: 'authorized' });
+      }),
+    );
+    const c = new GreenApiClient({ apiUrl: API, idInstance: ID, apiTokenInstance: 'a/b?c#d' });
+    await c.getStateInstance();
+    expect(seen).toBe(`/waInstance${ID}/getStateInstance/a%2Fb%3Fc%23d`);
+  });
+
+  it.each([
+    [404, '', 'Инстанс не найден. Проверьте API URL и idInstance'],
+    [429, '', 'Слишком много запросов, подождите немного'],
+    [466, '', 'Достигнут лимит тарифа GREEN-API'],
+    [469, '', 'Telegram временно ограничил проверку номеров, попробуйте позже'],
+    [502, '', 'Сервер GREEN-API временно недоступен'],
+    [400, 'custom webhook url is set', 'В настройках инстанса задан Webhook URL — очистите его, чтобы получать сообщения'],
+    [400, 'Message by id not found', 'Сообщение не найдено — возможно, оно уже удалено'],
+    [418, '', 'Ошибка 418'],
+  ])('HTTP %i → readable message', async (status, body, message) => {
+    server.use(http.post(`${base}/sendMessage/:token`, () => new HttpResponse(body, { status })));
+    await expect(client.sendMessage({ chatId: '1', message: 'x' })).rejects.toMatchObject({ status, message });
+  });
+
+  it('reports rate limits from checkAccount even when they come as 200', async () => {
+    server.use(
+      http.post(`${base}/checkAccount/:token`, () =>
+        HttpResponse.json({ status: false, data: { status: 'fail', reason: 'rate_limit_exceeded' } }),
+      ),
+    );
+    await expect(client.checkAccount({ phoneNumber: '77001234567' })).rejects.toThrow('Telegram просит подождать');
+  });
+
+  it('turns a non-JSON answer (proxy error page) into an error instead of crashing later', async () => {
+    server.use(http.get(`${base}/getSettings/:token`, () => HttpResponse.text('<html>Bad gateway</html>')));
+    await expect(client.getSettings()).rejects.toThrow();
+  });
+
+  it('sends settings and delete requests in the documented shape', async () => {
+    await client.setSettings({ incomingWebhook: 'yes', webhookUrl: '' });
+    expect(fake.settings).toMatchObject({ incomingWebhook: 'yes', webhookUrl: '' });
+
+    await client.deleteMessage({ chatId: '10', idMessage: 'm1', onlySenderDelete: true });
+    expect(fake.deletedMessages).toEqual([{ chatId: '10', idMessage: 'm1', onlySenderDelete: true }]);
+  });
+
+  it('passes the receive timeout to long polling', async () => {
+    let timeout: string | null = null;
+    server.use(
+      http.get(`${base}/receiveNotification/:token`, ({ request }) => {
+        timeout = new URL(request.url).searchParams.get('receiveTimeout');
+        return HttpResponse.text('null');
+      }),
+    );
+    expect(await client.receiveNotification(20)).toBeNull();
+    expect(timeout).toBe('20');
   });
 });

@@ -7,6 +7,7 @@ import { listLabel } from '../lib/date';
 import { maskPhoneInput } from '../lib/phone';
 import type { Chat } from '../state/chatReducer';
 import { Avatar } from './Avatar';
+import { useLongPress } from '../hooks/useLongPress';
 import { ActionMenu } from './ActionMenu';
 import { AppLogo, AutoThemeIcon, LogoutIcon, MoonIcon, PlusIcon, SunIcon, TrashIcon } from './icons';
 import { StatusMark } from './StatusMark';
@@ -117,6 +118,7 @@ function ChatListItem({ chat, active, onSelect, onRemove }: ItemProps) {
   // Right click (long press on phones) → remove the chat from the list.
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const longPress = useLongPress(useCallback(() => setMenuOpen(true), []));
   const last = chat.messages[chat.messages.length - 1];
   const preview = chat.draft
     ? { draft: true, text: chat.draft }
@@ -126,11 +128,14 @@ function ChatListItem({ chat, active, onSelect, onRemove }: ItemProps) {
     <div className="chat-item__wrap">
       <button
         className={`chat-item ${active ? 'is-active' : ''}`}
-        onClick={() => onSelect(chat.chatId)}
+        onClick={() => {
+          if (!longPress.consumeClick()) onSelect(chat.chatId);
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           setMenuOpen(true);
         }}
+        {...longPress.handlers}
       >
         <Avatar id={chat.chatId} title={chat.title} />
         <div className="chat-item__body">

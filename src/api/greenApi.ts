@@ -31,6 +31,25 @@ export function guessApiUrl(idInstance: string): string {
   return /^\d{4}$/.test(cluster) ? `https://${cluster}.api.green-api.com` : 'https://api.green-api.com';
 }
 
+/**
+ * The token travels in the URL path, so it must only ever go to GREEN-API over
+ * HTTPS. Returns an error message, or null when the URL is acceptable.
+ */
+export function validateApiUrl(apiUrl: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(apiUrl.trim());
+  } catch {
+    return 'API URL должен быть адресом вида https://4100.api.green-api.com';
+  }
+  if (url.protocol !== 'https:') return 'API URL должен начинаться с https://';
+  const host = url.hostname.toLowerCase();
+  if (host !== 'green-api.com' && !host.endsWith('.green-api.com')) {
+    return 'API URL должен вести на домен green-api.com — токен нельзя отправлять на другие сайты';
+  }
+  return null;
+}
+
 type Method = 'GET' | 'POST' | 'DELETE';
 
 /**
@@ -43,8 +62,9 @@ export class GreenApiClient {
 
   constructor(credentials: Credentials) {
     const apiUrl = credentials.apiUrl.trim().replace(/\/+$/, '');
-    this.base = `${apiUrl}/waInstance${credentials.idInstance.trim()}`;
-    this.token = credentials.apiTokenInstance.trim();
+    // Encoded so a stray "/", "?" or "#" in a pasted value can't change the request path.
+    this.base = `${apiUrl}/waInstance${encodeURIComponent(credentials.idInstance.trim())}`;
+    this.token = encodeURIComponent(credentials.apiTokenInstance.trim());
   }
 
   private async request<T>(
@@ -57,7 +77,7 @@ export class GreenApiClient {
       signal,
     }: { body?: unknown; query?: string; suffix?: string; signal?: AbortSignal } = {},
   ): Promise<T> {
-    const url = `${this.base}/${path}/${this.token}${suffix ? `/${suffix}` : ''}${query ? `?${query}` : ''}`;
+    const url = `${this.base}/${path}/${this.token}${suffix ? `/${encodeURIComponent(suffix)}` : ''}${query ? `?${query}` : ''}`;
     const res = await fetch(url, {
       method,
       signal,

@@ -50,6 +50,7 @@ export function ChatView({ chat, api, instanceState, onBack }: Props) {
   }, [loaded, chat.chatId, refreshHistory]);
 
   useEffect(() => setReplyTo(null), [chat.chatId]);
+  const cancelReply = useCallback(() => setReplyTo(null), []);
 
   const send = useCallback(() => {
     sendMessage(chat.chatId, chat.draft, replyTo?.id);
@@ -135,7 +136,7 @@ export function ChatView({ chat, api, instanceState, onBack }: Props) {
         onSend={send}
         replyTo={replyTo}
         replyAuthor={replyTo?.direction === 'out' ? 'Вы' : chat.title}
-        onCancelReply={() => setReplyTo(null)}
+        onCancelReply={cancelReply}
         disabled={!authorized}
       />
     </section>

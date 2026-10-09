@@ -34,12 +34,21 @@ export function Composer({ chatId, value, onChange, onSend, replyTo, replyAuthor
     if (window.matchMedia?.('(pointer: fine)').matches) ref.current?.focus();
   }, [chatId, replyTo]);
 
+  // Esc cancels a reply wherever the focus is — unless a menu is open (Esc closes that first).
+  useEffect(() => {
+    if (!replyTo) return;
+    const onEsc = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('[role="menu"]')) onCancelReply();
+    };
+    document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, [replyTo, onCancelReply]);
+
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (canSend) onSend();
     }
-    if (e.key === 'Escape' && replyTo) onCancelReply();
   }
 
   return (

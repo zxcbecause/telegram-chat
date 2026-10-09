@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../App';
 import { demoTiming } from './demoClient';
@@ -51,5 +51,49 @@ describe('Demo mode', () => {
     await user.click(await within(chat).findByRole('button', { name: /Повторить/ }));
     expect(await within(chat).findByText('Со второй попытки дошло ✅')).toBeInTheDocument();
     await waitFor(() => expect(within(chat).queryByRole('button', { name: /Повторить/ })).not.toBeInTheDocument());
+  });
+
+  it('opens straight from a shared ?demo link and leaves demo mode on logout', async () => {
+    window.history.replaceState(null, '', '/?demo');
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByText('Демо')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Выйти' }));
+    expect(await screen.findByRole('button', { name: 'Войти' })).toBeInTheDocument();
+    expect(window.location.search).toBe('');
+  });
+
+  it('new chats by number, deleting own messages and removing chats all work offline', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Посмотреть демо без инстанса' }));
+    await user.type(await screen.findByLabelText('Номер телефона или @username получателя'), '87011112233');
+    await user.click(screen.getByRole('button', { name: 'Создать чат' }));
+    const chat = await screen.findByRole('region', { name: 'Чат с +7 701 111-22-33' });
+
+    await user.type(within(chat).getByLabelText('Текст сообщения'), 'Привет из демо{Enter}');
+    expect(await within(chat).findByText(/новый демо-чат/)).toBeInTheDocument();
+
+    fireEvent.contextMenu(within(chat).getByText('Привет из демо'));
+    await user.click(screen.getByRole('menuitem', { name: 'Удалить у всех' }));
+    await waitFor(() => expect(within(chat).queryByText('Привет из демо')).not.toBeInTheDocument());
+
+    const list = screen.getByRole('complementary', { name: 'Чаты' });
+    fireEvent.contextMenu(within(list).getByText('+7 701 111-22-33'));
+    await user.click(await screen.findByRole('menuitem', { name: 'Удалить чат' }));
+    await waitFor(() => expect(within(list).queryByText('+7 701 111-22-33')).not.toBeInTheDocument());
+  });
+
+  it('never talks to the network', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Посмотреть демо без инстанса' }));
+    await user.click(await screen.findByText('Эхо-бот'));
+    const chat = await screen.findByRole('region', { name: 'Чат с Эхо-бот' });
+    await user.type(within(chat).getByLabelText('Текст сообщения'), 'тук-тук{Enter}');
+    await within(chat).findByText('Эхо: тук-тук');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 });

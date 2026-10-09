@@ -17,6 +17,8 @@ import { chatReducer, initialState, selectChatList, type Chat, type ChatState } 
 import { useNotifications } from './useNotifications';
 
 const MESSAGES_KEPT_PER_CHAT = 100;
+/** GREEN-API warns that re-checking the same missing number can get the account restricted. */
+const NOT_FOUND_CACHE_MS = 10 * 60 * 1000;
 const CLOCK_SKEW_LIMIT_MS = 15 * 60 * 1000;
 
 let localSeq = 0;
@@ -24,13 +26,20 @@ const newLocalId = () => `local-${Date.now()}-${++localSeq}`;
 
 function restore(idInstance: string, persist: boolean): ChatState {
   if (!persist) return initialState;
-  const chats = load<Record<string, Chat>>(keys.chats(idInstance), {});
+  const stored = load<Record<string, Chat>>(keys.chats(idInstance), {});
+  // Skip anything malformed (old format, manual edits) instead of crashing on start.
+  const chats: Record<string, Chat> = {};
+  for (const [id, chat] of Object.entries(stored && typeof stored === 'object' ? stored : {})) {
+    if (chat && typeof chat.chatId === 'string' && Array.isArray(chat.messages)) chats[id] = chat;
+  }
   // Anything that was still "pending" when the tab closed did not get a confirmation.
   for (const chat of Object.values(chats)) {
     chat.history = 'idle';
-    chat.messages = chat.messages.map((m) =>
-      m.status === 'pending' ? { ...m, status: 'failed', error: 'Отправка прервана' } : m,
-    );
+    // Same for deletions that were in flight.
+    chat.messages = chat.messages.map((m) => {
+      const restored = m.deleting ? { ...m, deleting: false } : m;
+      return restored.status === 'pending' ? { ...restored, status: 'failed', error: 'Отправка прервана' } : restored;
+    });
   }
   return { ...initialState, chats };
 }
@@ -45,6 +54,9 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
   useEffect(() => {
     if (!persist) return;
     const t = setTimeout(() => {
+      // After "Выйти" the chat view lives on for its exit animation; a save that
+      // fires then must not write the chats back. No stored session = logged out.
+      if (!load(keys.session, null)) return;
       const trimmed: Record<string, Chat> = {};
       for (const [id, chat] of Object.entries(state.chats)) {
         trimmed[id] = { ...chat, messages: chat.messages.slice(-MESSAGES_KEPT_PER_CHAT) };
@@ -113,6 +125,7 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
   // One history request per chat at a time. Requests aren't aborted when the
   // user switches chats — the result is still useful when they come back.
   const historyInFlight = useRef(new Set<string>());
+  const notFound = useRef(new Map<string, { error: string; until: number }>());
 
   const loadHistory = useCallback(
     async (chatId: string) => {
@@ -175,17 +188,20 @@ export function useChat(client: ApiClient, idInstance: string, persist: boolean)
         return { ok: true };
       }
 
+      const cacheKey = recipient.value.toLowerCase();
+      const cached = notFound.current.get(cacheKey);
+      if (cached && cached.until > Date.now()) return { ok: false, error: cached.error };
+
       try {
         const res = await client.checkAccount(
           isPhone ? { phoneNumber: recipient.value } : { username: recipient.value },
         );
         if (!res?.exist || !res.chatId) {
-          return {
-            ok: false,
-            error: isPhone
-              ? 'Не нашли Telegram на этом номере (или номер скрыт настройками приватности)'
-              : 'Пользователь с таким @username не найден',
-          };
+          const error = isPhone
+            ? 'Не нашли Telegram на этом номере (или номер скрыт настройками приватности)'
+            : 'Пользователь с таким @username не найден';
+          notFound.current.set(cacheKey, { error, until: Date.now() + NOT_FOUND_CACHE_MS });
+          return { ok: false, error };
         }
         const phone = isPhone ? recipient.value : res.phoneNumber ? String(res.phoneNumber) : undefined;
         const username = res.username || (isPhone ? undefined : recipient.value);

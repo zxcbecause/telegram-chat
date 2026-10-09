@@ -13,6 +13,7 @@ export const fake = {
   deleted: [] as number[],
   sent: [] as Array<{ chatId: string; message: string; quotedMessageId?: string }>,
   deletedMessages: [] as Array<{ chatId: string; idMessage: string; onlySenderDelete?: boolean }>,
+  checks: 0,
   state: 'authorized',
   nextReceipt: 1,
   settings: {
@@ -30,6 +31,7 @@ export const fake = {
     this.deleted = [];
     this.sent = [];
     this.deletedMessages = [];
+    this.checks = 0;
     this.state = 'authorized';
     this.nextReceipt = 1;
     this.settings = {
@@ -49,6 +51,7 @@ export const handlers = [
     auth(params.token) ? HttpResponse.json({ stateInstance: fake.state }) : new HttpResponse(null, { status: 401 }),
   ),
   http.post(`${base}/checkAccount/:token`, async ({ request }) => {
+    fake.checks += 1;
     const { phoneNumber, username } = (await request.json()) as { phoneNumber?: number; username?: string };
     if (username) {
       return username.toLowerCase() === '@anya_dev'

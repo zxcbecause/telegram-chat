@@ -14,7 +14,7 @@ const LABELS: Record<MessageStatus, string> = {
 export function StatusMark({ status }: { status: MessageStatus }) {
   return (
     <span className={`status status--${status}`} title={LABELS[status]} role="img" aria-label={LABELS[status]}>
-      <AnimatePresence mode="popLayout" initial={false}>
+      <AnimatePresence initial={false}>
         <motion.span
           key={status === 'read' ? 'delivered-read' : status}
           className="status__icon"

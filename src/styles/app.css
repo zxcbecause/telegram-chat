@@ -1229,6 +1229,12 @@ a:hover {
   opacity: 0.85;
 }
 
+/* Long press opens our menu — don't also show the iOS copy/lookup callout. */
+.msg,
+.chat-item {
+  -webkit-touch-callout: none;
+}
+
 .bubble--deleting {
   opacity: 0.45;
   transition: opacity 0.2s;
@@ -1247,8 +1253,10 @@ a:hover {
 .menu {
   position: absolute;
   z-index: 20;
+  /* Not limited by the (possibly narrow) bubble it is attached to. */
+  width: max-content;
   min-width: 200px;
-  max-width: 280px;
+  max-width: min(300px, calc(100vw - 24px));
   padding: 6px;
   border-radius: 14px;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
@@ -1266,6 +1274,7 @@ a:hover {
 }
 
 .menu__item {
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 10px;

@@ -3,6 +3,7 @@ import { memo, useCallback, useRef, useState, type MouseEvent } from 'react';
 import { attachmentIcon, attachmentLabel, messagePreview } from '../lib/attachment';
 import { timeLabel } from '../lib/date';
 import type { Message } from '../state/chatReducer';
+import { useLongPress } from '../hooks/useLongPress';
 import { ActionMenu, type MenuItem } from './ActionMenu';
 import { ReplyIcon, RetryIcon, CloseIcon, TrashIcon } from './icons';
 import { StatusMark } from './StatusMark';
@@ -63,14 +64,20 @@ export const MessageBubble = memo(function MessageBubble({
       : []),
   ];
 
-  const onContextMenu = (e: MouseEvent) => {
+  const openMenu = () => {
     if (!menuItems.length) return;
-    e.preventDefault();
     // Near the bottom of the screen the menu opens upwards so it isn't cut off.
     const rect = ref.current?.getBoundingClientRect();
     setMenuUp(!!rect && rect.bottom > window.innerHeight * 0.55);
     setMenuOpen(true);
   };
+  const onContextMenu = (e: MouseEvent) => {
+    if (!menuItems.length) return;
+    e.preventDefault();
+    openMenu();
+  };
+  // iPhone: long press (Safari has no contextmenu event).
+  const longPress = useLongPress(openMenu);
   const { attachment } = message;
 
   return (
@@ -83,6 +90,7 @@ export const MessageBubble = memo(function MessageBubble({
       transition={{ type: 'spring', stiffness: 520, damping: 34, mass: 0.7 }}
       onDoubleClick={() => canReply && onReply(message)}
       onContextMenu={onContextMenu}
+      {...longPress.handlers}
     >
       <div className={`bubble ${failed ? 'bubble--failed' : ''} ${message.deleting ? 'bubble--deleting' : ''}`}>
         {message.quotedId && (
