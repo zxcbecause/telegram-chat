@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { GreenApiError, type GreenApiClient } from '../api/greenApi';
+import { GreenApiError, type ApiClient } from '../api/greenApi';
 import type { Webhook } from '../api/types';
 
 export type ConnectionState = 'connecting' | 'online' | 'offline' | 'unauthorized';
@@ -27,7 +27,7 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
  * - everything is cancelled through an AbortController on unmount / logout.
  */
 export function useNotifications(
-  client: GreenApiClient | null,
+  client: ApiClient | null,
   onWebhook: (webhook: Webhook) => void,
 ): ConnectionState {
   const [state, setState] = useState<ConnectionState>('connecting');

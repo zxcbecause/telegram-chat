@@ -7,9 +7,10 @@ import { ChevronIcon, EyeIcon, AppLogo } from './icons';
 
 interface Props {
   onLogin: (credentials: Credentials, remember: boolean) => Promise<LoginResult>;
+  onDemo: () => void;
 }
 
-export function LoginScreen({ onLogin }: Props) {
+export function LoginScreen({ onLogin, onDemo }: Props) {
   const [idInstance, setIdInstance] = useState('');
   const [token, setToken] = useState('');
   const [apiUrl, setApiUrl] = useState('');
@@ -152,6 +153,14 @@ export function LoginScreen({ onLogin }: Props) {
 
         <button className="btn btn--primary btn--block" type="submit" disabled={!canSubmit}>
           {busy ? <span className="spinner" aria-label="Проверяем" /> : 'Войти'}
+        </button>
+
+        <div className="login__divider" aria-hidden>
+          <span>или</span>
+        </div>
+
+        <button type="button" className="btn btn--ghost btn--block" onClick={onDemo}>
+          Посмотреть демо без инстанса
         </button>
 
         <p className="login__foot">

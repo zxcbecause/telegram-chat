@@ -13,6 +13,7 @@ interface Props {
   chats: Chat[];
   activeChatId: string | null;
   connection: ConnectionState;
+  demo?: boolean;
   theme: ThemePref;
   onToggleTheme: () => void;
   onLogout: () => void;
@@ -36,7 +37,9 @@ export function Sidebar(props: Props) {
         <div className="sidebar__brand">
           <AppLogo size={30} />
           <div>
-            <div className="sidebar__title">Чаты</div>
+            <div className="sidebar__title">
+              Чаты {props.demo && <span className="demo-tag">Демо</span>}
+            </div>
             <div className={`conn conn--${connection}`} role="status" aria-live="polite">
               <span className="conn__dot" />
               {CONNECTION_TEXT[connection]}
@@ -57,6 +60,12 @@ export function Sidebar(props: Props) {
           </button>
         </div>
       </header>
+
+      {props.demo && (
+        <p className="demo-note">
+          Демо-режим: собеседники и ответы имитируются в браузере, в Telegram ничего не отправляется.
+        </p>
+      )}
 
       <NewChatForm onCreate={props.onCreate} />
 

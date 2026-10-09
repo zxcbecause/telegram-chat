@@ -116,6 +116,20 @@ export class GreenApiClient {
   }
 }
 
+/**
+ * What the UI needs from a messenger backend. The real GreenApiClient and the
+ * in-browser DemoClient both implement it, so the app doesn't know the difference.
+ */
+export type ApiClient = Pick<
+  GreenApiClient,
+  | 'getStateInstance'
+  | 'sendMessage'
+  | 'checkAccount'
+  | 'getChatHistory'
+  | 'receiveNotification'
+  | 'deleteNotification'
+>;
+
 async function safeText(res: Response): Promise<string> {
   try {
     return await res.text();

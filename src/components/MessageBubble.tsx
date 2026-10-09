@@ -72,14 +72,14 @@ export const MessageBubble = memo(function MessageBubble({
         <motion.div className="msg__failed" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <span>{message.error ?? 'Не отправлено'}</span>
           {message.local && (
-            <>
+            <span className="msg__failed-actions">
               <button type="button" onClick={() => onRetry(message.id)}>
                 <RetryIcon width={14} height={14} /> Повторить
               </button>
               <button type="button" onClick={() => onDiscard(message.id)}>
                 <CloseIcon width={14} height={14} /> Удалить
               </button>
-            </>
+            </span>
           )}
         </motion.div>
       )}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import type { GreenApiClient } from '../api/greenApi';
+import type { ApiClient } from '../api/greenApi';
 import {
   describeStatusError,
   isRenderableMessage,
@@ -32,7 +32,7 @@ function restore(idInstance: string, persist: boolean): ChatState {
   return { ...initialState, chats };
 }
 
-export function useChat(client: GreenApiClient, idInstance: string, persist: boolean) {
+export function useChat(client: ApiClient, idInstance: string, persist: boolean) {
   const [state, dispatch] = useReducer(chatReducer, undefined, () => restore(idInstance, persist));
   const [instanceState, setInstanceState] = useState<InstanceState>('authorized');
   const stateRef = useRef(state);

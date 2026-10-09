@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { GreenApiClient, GreenApiError } from '../api/greenApi';
+import { GreenApiClient, GreenApiError, type ApiClient } from '../api/greenApi';
+import { DemoClient } from '../demo/demoClient';
 import type { Credentials } from '../api/types';
 import { keys, load, remove, save } from '../lib/storage';
 
@@ -11,6 +12,22 @@ interface StoredSession {
 export interface Session {
   credentials: Credentials;
   remember: boolean;
+  /** Demo mode: an in-browser fake instance, nothing is sent anywhere. */
+  demo?: boolean;
+}
+
+const DEMO_SESSION: Session = {
+  credentials: { idInstance: 'demo', apiTokenInstance: '', apiUrl: '' },
+  remember: false,
+  demo: true,
+};
+
+function wantsDemoFromUrl(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).has('demo');
+  } catch {
+    return false;
+  }
 }
 
 export type LoginResult = { ok: true } | { ok: false; error: string };
@@ -21,11 +38,18 @@ export type LoginResult = { ok: true } | { ok: false; error: string };
  */
 export function useSession() {
   const [session, setSession] = useState<Session | null>(() => {
+    if (wantsDemoFromUrl()) return DEMO_SESSION; // shareable link: https://…/?demo
     const stored = load<StoredSession | null>(keys.session, null);
     return stored ? { credentials: stored.credentials, remember: true } : null;
   });
 
-  const client = useMemo(() => (session ? new GreenApiClient(session.credentials) : null), [session]);
+  // A fresh demo client per demo session, so "Выйти → Демо" starts over.
+  const client = useMemo<ApiClient | null>(() => {
+    if (!session) return null;
+    return session.demo ? new DemoClient() : new GreenApiClient(session.credentials);
+  }, [session]);
+
+  const startDemo = useCallback(() => setSession({ ...DEMO_SESSION }), []);
 
   const login = useCallback(async (credentials: Credentials, remember: boolean): Promise<LoginResult> => {
     const probe = new GreenApiClient(credentials);
@@ -54,10 +78,14 @@ export function useSession() {
   }, []);
 
   const logout = useCallback(() => {
-    if (session) remove(keys.chats(session.credentials.idInstance));
-    remove(keys.session);
+    if (session && !session.demo) {
+      remove(keys.chats(session.credentials.idInstance));
+      remove(keys.session);
+    }
+    // Drop ?demo from the address bar so a reload shows the login screen.
+    if (wantsDemoFromUrl()) window.history.replaceState(null, '', window.location.pathname);
     setSession(null);
   }, [session]);
 
-  return { session, client, login, logout };
+  return { session, client, login, logout, startDemo };
 }

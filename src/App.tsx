@@ -5,7 +5,7 @@ import { useSession } from './hooks/useSession';
 import { useTheme } from './hooks/useTheme';
 
 export default function App() {
-  const { session, client, login, logout } = useSession();
+  const { session, client, login, logout, startDemo } = useSession();
   const { pref, cycle } = useTheme();
 
   return (
@@ -14,7 +14,7 @@ export default function App() {
       <AnimatePresence mode="wait">
         {session && client ? (
           <motion.div
-            key={`chat-${session.credentials.idInstance}`}
+            key={session.demo ? 'demo' : `chat-${session.credentials.idInstance}`}
             className="root-pane"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -24,6 +24,7 @@ export default function App() {
               client={client}
               idInstance={session.credentials.idInstance}
               persist={session.remember}
+              demo={!!session.demo}
               theme={pref}
               onToggleTheme={cycle}
               onLogout={logout}
@@ -31,7 +32,7 @@ export default function App() {
           </motion.div>
         ) : (
           <motion.div key="login" className="root-pane" exit={{ opacity: 0, scale: 0.98 }}>
-            <LoginScreen onLogin={login} />
+            <LoginScreen onLogin={login} onDemo={startDemo} />
           </motion.div>
         )}
       </AnimatePresence>

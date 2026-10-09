@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import type { GreenApiClient } from '../api/greenApi';
+import type { ApiClient } from '../api/greenApi';
 import { useChat } from '../hooks/useChat';
 import type { ThemePref } from '../hooks/useTheme';
 import { ChatView } from './ChatView';
@@ -7,15 +7,16 @@ import { AppLogo } from './icons';
 import { Sidebar } from './Sidebar';
 
 interface Props {
-  client: GreenApiClient;
+  client: ApiClient;
   idInstance: string;
   persist: boolean;
+  demo: boolean;
   theme: ThemePref;
   onToggleTheme: () => void;
   onLogout: () => void;
 }
 
-export function Messenger({ client, idInstance, persist, theme, onToggleTheme, onLogout }: Props) {
+export function Messenger({ client, idInstance, persist, demo, theme, onToggleTheme, onLogout }: Props) {
   const api = useChat(client, idInstance, persist);
   const { activeChat } = api;
 
@@ -25,6 +26,7 @@ export function Messenger({ client, idInstance, persist, theme, onToggleTheme, o
         chats={api.chats}
         activeChatId={activeChat?.chatId ?? null}
         connection={api.connection}
+        demo={demo}
         theme={theme}
         onToggleTheme={onToggleTheme}
         onLogout={onLogout}
